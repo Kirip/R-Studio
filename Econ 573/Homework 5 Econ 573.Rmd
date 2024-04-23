@@ -1,0 +1,208 @@
+---
+title: "Homework 5"
+author: "Jabbir Ahmed"
+date: "2024-04-14"
+output:
+  word_document: default
+  pdf_document: default
+---
+__PART 1__
+
+  __Problem 3__
+In this problem, you will perform K-means clustering manually, with K = 2, on a small example with n = 6 observations and p = 2
+features. The observations are as follows.
+```{r}
+# __A__
+x <- cbind(c(1, 1, 0, 5, 6, 4), c(4, 3, 4, 1, 2, 0))
+plot(x[,1], x[,2])
+
+# __B__
+set.seed(1)
+labels <- sample(2, nrow(x), replace = T)
+labels
+plot(x[, 1], x[, 2], col = (labels + 1), pch = 20, cex = 2)
+
+# __C__
+centroid1 <- c(mean(x[labels == 1, 1]), mean(x[labels == 1, 2]))
+centroid2 <- c(mean(x[labels == 2, 1]), mean(x[labels == 2, 2]))
+plot(x[,1], x[,2], col=(labels + 1), pch = 20, cex = 2)
+points(centroid1[1], centroid1[2], col = 2, pch = 4)
+points(centroid2[1], centroid2[2], col = 3, pch = 4)
+
+# __D__
+labels <- c(1, 1, 1, 2, 2, 2)
+plot(x[, 1], x[, 2], col = (labels + 1), pch = 20, cex = 2)
+points(centroid1[1], centroid1[2], col = 2, pch = 4)
+points(centroid2[1], centroid2[2], col = 3, pch = 4)
+
+# __E__
+centroid1 <- c(mean(x[labels == 1, 1]), mean(x[labels == 1, 2]))
+centroid2 <- c(mean(x[labels == 2, 1]), mean(x[labels == 2, 2]))
+plot(x[,1], x[,2], col=(labels + 1), pch = 20, cex = 2)
+points(centroid1[1], centroid1[2], col = 2, pch = 4)
+points(centroid2[1], centroid2[2], col = 3, pch = 4)
+# If we assign each observation to the centroid to which it is closest, nothing changes, so the algorithm is terminated at this step.
+
+# __F__
+plot(x[, 1], x[, 2], col=(labels + 1), pch = 20, cex = 2)
+```
+  __Problem 10___
+In this problem, you will generate simulated data, and then perform PCA and K-means clustering on the data.
+```{r}
+# __A__
+set.seed(2)
+x <- matrix(rnorm(20 * 3 * 50, mean = 0, sd = 0.001), ncol = 50)
+x[1:20, 2] <- 1
+x[21:40, 1] <- 2
+x[21:40, 2] <- 2
+x[41:60, 1] <- 1
+true.labels <- c(rep(1, 20), rep(2, 20), rep(3, 20))
+
+# __B__
+pr.out <- prcomp(x)
+plot(pr.out$x[, 1:2], col = 1:3, xlab = "Z1", ylab = "Z2", pch = 19)
+
+# __C__
+km.out <- kmeans(x, 3, nstart = 20)
+table(true.labels, km.out$cluster)
+# The observations are perfectly clustered.
+
+# __D__
+km.out <- kmeans(x, 2, nstart = 20)
+table(true.labels, km.out$cluster)
+# All observations of one of the three clusters is now absorbed in one of the two clusters.
+
+# __E__
+km.out <- kmeans(x, 4, nstart = 20)
+table(true.labels, km.out$cluster)
+# The first cluster is splitted into two clusters.
+
+# __F__
+km.out <- kmeans(pr.out$x[, 1:2], 3, nstart = 20)
+table(true.labels, km.out$cluster)
+# All observations are perfectly clustered once again.
+
+# __G__
+km.out <- kmeans(scale(x), 3, nstart = 20)
+table(true.labels, km.out$cluster)
+# We may see that we have worse results than with unscaled data, as scaling affects the distance between the observations.
+
+```
+
+___PART 2___
+  __Problem 1__ What are the latent factors (Principal Components) of international currency pricing? And how do these factor move against US equities?
+
+__A__ Latent factors of international currency pricing can be identified using Principal Component Analysis (PCA), which reduces the dimensionality of data while preserving variability. Common latent factors in currency markets include global risk sentiment, geopolitical stability, economic indicators (like interest rates and GDP growth), and market liquidity. These factors capture the underlying influences on currency valuations across different countries.
+
+The relationship between these latent factors and US equities is influenced by shared and unique economic variables. Global risk sentiment, for instance, closely correlates with US equities; during high risk appetite, investors might shift from safe-haven assets like US Treasuries and stable currencies to riskier assets such as equities and emerging market currencies. Other factors like economic indicators and market liquidity also play roles, with strong US economic indicators typically bolstering both US equities and the dollar, affecting other currencies variably.
+
+To analyze the interactions between currency pricing factors and US equities, one can use historical financial data, applying PCA to extract principal components and then examine the relationships using statistical techniques. This analysis, often performed with tools such as MATLAB, R, or Python, helps in understanding how movements in these latent factors correlate with US equity indices like the S&P 500, providing insights into the dynamics of global financial markets.
+
+__Problem 2__
+```{r}
+# Load necessary libraries
+library(readr)
+library(dplyr)
+library(stats)  # For PCA
+library(glmnet)  # For Lasso
+library(ggplot2)  # For visualization (optional)
+
+# Load the data
+fx <- read.csv("FXmonthly.csv")
+sp500 <- read.csv("sp500.csv")  # Assuming a "Returns" column
+
+# Preprocess data (handle missing values and calculate returns)
+missing_rows <- is.na(fx)
+fx_clean <- fx[!rowSums(missing_rows), ]
+
+fx_returns <- (fx[2:120,]-fx[1:119,])/(fx[1:119,])
+
+sp500$returns <- (sp500[2:120,] - sp500[1:119,]) / (sp500[1:119,])
+
+# 1. Correlation and PCA Applicability
+
+cor_matrix <- cor(fx[, -1]) # Exclude the first column assuming it's the date
+print(cor_matrix)
+
+
+# High correlations suggest redundancy, making PCA potentially useful.
+
+# 2. Fitting, Plotting, and Interpreting Principal Components (PCs)
+
+# Perform PCA
+# PCA
+pca_result <- prcomp(fx[, -1], scale. = TRUE) # Exclude the first column
+summary(pca_result)
+
+# Plotting the first two principal components
+plot(pca_result, data = fx, scale = 0, loadings = TRUE, loadings.label = TRUE, loadings.label.size = 3)
+
+# Exclude first column (potentially SP500) 
+plot(pca_result$x[, 1:2], main = "First Two Principal Components", xlab = "PC1", ylab = "PC2")
+
+# # Principal Component Analysis (PCA) is a statistical technique used to reduce the dimensionality of a dataset while preserving as much information as possible. In your case, PCA resulted in 14 significant components, indicating a complex dataset with multiple underlying patterns or factors influencing the data. The scatter plot showing PC1 versus PC2 with points spread widely away from zero suggests high variability and potentially distinct groupings or outliers within your data. This spread implies that the first two principal components capture a significant amount of diverse information, each representing different variances and possibly contrasting forces or characteristics in your dataset.
+
+# 3. Regressing SP500 Returns on Currency Movement PCs
+
+# Convert the scores to a data frame and add a column for the SP500 returns
+# Extract the SP500 returns as a numeric vector
+sp500_returns <- sp500$sp500
+
+# Assuming pca_result is the result of prcomp applied to your FX data
+# Extract the principal component scores
+pca_scores <- pca_result$x[-1, 1:2] # Adjust the number of components as needed
+
+# Convert the scores to a data frame and add a column for the SP500 returns
+pca_scores_df <- data.frame(pca_scores)
+pca_scores_df$returns <- sp500_returns
+
+# Fit the linear model using the principal component scores as predictors
+glm_model <- lm(returns ~ ., data = pca_scores_df)
+summary(glm_model)
+
+# Lasso
+pca_scores_matrix <- as.matrix(pca_scores)
+sp500_returns<-sp500$sp500
+# Fit the Lasso model using the corrected predictor matrix and response vector
+lasso_model <- glmnet(pca_scores_matrix, sp500_returns, family = "gaussian", alpha = 1)
+cv_lasso <- cv.glmnet(pca_scores_matrix, sp500_returns, family = "gaussian", alpha = 1)
+plot(cv_lasso) # Adjust alpha for sparsity control
+best_model <- lasso_model$lambda.min
+coef_lasso <- coef(lasso_model, s = best_model)
+print(coef_lasso)
+# In the GLM model, the negative coefficient of -.0014 for PC1 suggests a negative relationship between this principal component and there is evidence to reject the null hypothesis of it having no relationship, which might represent overall dollar strength, and S&P 500 returns, indicating that a weaker dollar is generally associated with higher stock market returns. The negative coefficient for PC2 (-0.0008) indicates that an increase in this component, possibly representing emerging market currency strength, correlates with lower S&P 500 returns. Also, there is enough evidence to reject the null hypothesis, hence there is a relationship between the principle component and sp500.
+# The Lasso regression highlights PC1 with a negative coefficients as a significant predictor of S&P 500 returns, underscoring its robust influence in the model, while effectively zeroing out PC2, suggesting it does not provide independent predictive value once other factors are accounted for. This selection emphasizes the most impactful predictors, enhancing model simplicity and focus.
+
+# 4. Lasso vs. PCA Regression (explained above)
+
+# Lasso on original covariates
+fx<- fx[-1,]
+fx_matrix <- as.matrix(fx)
+# Fit the Lasso model with the adjusted predictor matrix and numeric response variable
+lasso_original <- glmnet(fx_matrix, sp500_returns, family = "gaussian", alpha = 1)
+# Perform cross-validation to select the optimal lambda
+cv_lasso_original <- cv.glmnet(fx_matrix, sp500_returns, family = "gaussian", alpha = 1)
+# Plot the cross-validation results to select the optimal lambda
+plot(cv_lasso_original)
+# A higher value of lambda = 18 results in a stronger penalty. This means more coefficients can be driven to zero, resulting in a simpler model with fewer predictors. At very high values, lambda can lead to a model where all coefficients are zero, effectively nullifying the influence of predictors in the model.
+
+# PCA captures variance but doesn't necessarily select the most relevant features.
+# Lasso performs variable selection, focusing on impactful currency movements.
+
+# 5. Bonus: PLS Regression (optional)
+library(pls)
+# Fit a PLS model
+pls_model <- plsr(sp500_returns ~ ., data = fx, ncomp = 2)
+
+# Summary of the PLS model
+summary(pls_model)
+# Plot PLS model
+plot(pls_model, main = "PLS Model Comparison")
+# PCA: The loadings and explained variance ratio give you an idea of how much variance in the data is explained by each principal component. The components are orthogonal to each other, meaning they are independent of each other. PLS: The coefficients indicate the contribution of each predictor to the response variable, taking into account the correlations among the predictors. The R-squared value shows how well the PLS model explains the variance in the response variable.
+
+# In this example: The output from the Partial Least Squares (PLS) regression using the kernel PLS method describes the effectiveness of the model in reducing the dimensionality of predictor variables (X) and explaining the variance in the response variable (Y, here `sp500_returns`). The dataset consists of 119 observations, with 23 predictors (X variables) and one response variable. The model was evaluated with up to 2 components. For X, the first component alone captures 98.7967% of its variance, and with two components, this increases slightly to 99.851%. In contrast, for the `sp500_returns`, the first component explains only 0.9618% of the variance, while two components together explain 1.935%. This indicates that while the model is highly effective at compressing the predictor space, its ability to explain the variance in `sp500_returns` is quite limited, suggesting that the predictive relationship between the predictors and the response variable may be weak or that more components might be needed to capture the complexity of their relationship.
+```
+
+
+
+

@@ -1,0 +1,114 @@
+---
+title: "ECON 573 Project - Data Cleaning"
+author: "Omar Farrag"
+date: "2024-04-17"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message=FALSE}
+echo = FALSE
+library(MASS)
+library(ISLR2)
+library(tidyverse)
+library(stargazer)
+library(kableExtra)
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(data.table)
+library(knitr)
+library(sandwich)
+library(glmnet)
+```
+
+```{r, message=TRUE}
+setwd("C:/Users/omarf/OneDrive - University of North Carolina at Chapel Hill/Documents/UNC Spring 2024 Courses/ECON 573 - Machine Learning/ECON 573 Project")
+```
+
+Call the first data set -- our individual college player data 
+```{r,message=TRUE}
+library(readxl)
+college <- read_excel("College_players/CollegeBasketballPlayers2009-2021.xlsx");
+head(college)
+```
+
+Call the second data set -- the one that has teams that made the NCAA Tournament -- and match variable names to the college set for merge. Drop irrelevant variables
+(Note: the variable ncaa_tourn, which is an indicator that the given team made the NCAA tournament that year, was created manually in the excel file prior to importation into R)
+
+```{r, message=TRUE}
+X538_ratings <- read_excel("538/538 Ratings.xlsx")
+head(X538_ratings)
+```
+
+```{r, message=TRUE}
+names(X538_ratings)[names(X538_ratings) == "TEAM"] <- "team"
+names(X538_ratings)[names(X538_ratings) == "YEAR"] <- "year"
+sub_538 <- X538_ratings %>%
+  select(year, team, ncaa_tourn)
+head(sub_538)
+```
+
+Now merge the two data sets using team name and year. Note that we are doing a partial merge: we want to keep all observations, matched and unmatched, in this case because we care about whether a player made it to the NCAA tournament in the given year or not. 
+```{r,message=TRUE}
+library(readxl)
+col_538 <- merge(college, sub_538, by = c("team","year"), all = TRUE)
+head(col_538)
+```
+
+Note that the ncaa_tourn is an exposure variable -- we assume that if a team makes it to the NCAA tournament, then they will benefit from heightened media attention and the fact that scouts will be there, even if they are not there to watch that particular player. This is supported by players going on significant runs in the tournament and boosting their draft stock -- with one famous example being Steph Curry. 
+
+Now call the third data set -- which contains coaching information -- and keep only relevant variables. Change variables names to set up merge. Note that we are interested in the coaching variable as another "exposure" type of variable -- we hypothesize that playing for a well-known or well-connected coach aids in a player making it to the NBA. 
+```{r, message=TRUE}
+dev <- read_excel("DEV _ March Madness.csv/DEV _ March Madness.xlsx")
+head(dev)
+```
+
+```{r, message=TRUE}
+names(dev)[names(dev) == "Team Name"] <- "team"
+names(dev)[names(dev) == "Season"] <- "year"
+names(dev)[names(dev) == "Active Coaching Length Index"] <- "coach_ind"
+sub_dev <- dev %>%
+  select(year, team, coach_ind )
+head(sub_dev)
+```
+The coach_ind is blind to the name of the coach. We assume that a coach who has a higher index (more years active) is a successful coach, and thus is more well-connected than less experienced coaches. Generally, this should hold true. 
+
+Now merge with the col_538 set. Here we can do a full merge, as we want observations that have information on the coach. 
+```{r, message=TRUE}
+final_players <- merge(col_538, sub_dev, by = c("team","year"))
+head(final_players)
+```
+
+Let's create our final exposure variable -- a binary indicator for whether or not the player played in a Power 5 conference in a given year. These are the top 5 most competitive conferences and they receive the most air time on national t.v. These are the most respected conferences by talent evaluators, since they are the most competitive -- similar to the top leagues in European football. 
+
+```{r, message=TRUE}
+library(dplyr)
+final_players <- final_players %>%
+mutate(final_players, p5 = case_when(conf == "ACC" ~ 1, conf == "B10" ~ 1, conf == "B12" ~ 1, conf == "BE" ~ 1, conf == "SEC" ~ 1, TRUE ~ 0))
+head(final_players)
+```
+
+We also create a binary variable for being drafted. 
+```{r, message=TRUE}
+library(dplyr)
+final_players <- final_players %>%
+mutate(final_players, drafted = case_when(pick > 0 ~ 1,  TRUE ~ 0))
+head(final_players)
+```
+
+Finally, let's delete some irrelevant variables from our final data set
+```{r, message=TRUE}
+final_players <- select(final_players, -c(conf, num, type,35, 37:45))
+head(final_players)
+```
+
+Now let's save our cleaned data set, final_players.
+```{r, message=TRUE}
+library(writexl)
+write_xlsx(final_players, "C:/Users/omarf/OneDrive - University of North Carolina at Chapel Hill/Documents/UNC Spring 2024 Courses/ECON 573 - Machine Learning/ECON 573 Project/cleaned_players.xlsx")
+```
+

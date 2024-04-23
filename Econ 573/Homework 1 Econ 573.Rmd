@@ -1,0 +1,375 @@
+---
+title: "Econ 573 HW1"
+author: "Jabbir Ahmed"
+date: "2024-01-22"
+output:
+  pdf_document: default
+  word_document: default
+---
+  
+Part 1:
+  
+Question 1: For each of parts (a) through (d), indicate whether we would generally expect the performance of a flexible statistical learning method to be better or worse than an inflexible method. Justify your answer.
+
+(a) Better: A large sample size means a flexible model will be able to better fit the data.
+
+(b) Worse: A flexible model would over fit the data. This model would lead be better fit the large data set.
+
+(c) Better: Highly flexible method will better fit the non linear relationship.
+
+(d) Worse: A more flexible model would increase the variance.
+
+Question 2: Explain whether each scenario is a classification or regression problem, and indicate whether we are most interested in inference or prediction. Finally, provide n and p.
+
+(a) Regression, Inference; The response in the case is quantative and want to understand how the predictors impact salary of the CEO, and not completely predict the CEO salary
+- n=500. p= 4, profit, number of employees, industry
+
+(b) Classification, Prediction; response is a binary value and we want know predicted value of the target
+- n=20, p = 14, price, marketing budget, competition price and 10 other variables
+
+(c) Regression, Prediction; response is a quantative value and we want to predict the response.
+- n=52, p = 4, % change in US market, % Change in Uk market, % Chnage in Germen Market.
+
+Question 3: We now revisit the bias-variance decomposition.
+
+(a)This can be found on the second document. I could not upload the picture
+
+(b) Var(E) or Bayes Error is the irreducible error and the test predictions cannot be better than this, therefore it is a straight line. 
+
+MSE (Test Error) reduces to an optimum point as it decreases with the bias fitting the model, also as increased flexibility means better fit, but with further increases leading to overfitting. 
+
+Training MSE continues to reduce as more flexibility means the method can very closely fit the training data. 
+
+Variance increases as the method tends to overfit as flexibility increases (fitting training data too well and not generalizing to test data). 
+
+Bias is reduced as the flexibility increases due to the method being better able to fit the data. 
+
+Question 4:You will now think of some real-life applications for statistical learning.
+
+(a) - Email Spam Detection; Given an email we want to classify it as spam or not spam. The goal of the application is predction of the future emails being spam or not.
+- Cats and Dog classification; Given an image, we want to classify wheter the image is of a cat or a dog. The goal here is predction.
+- Fraud detection; Classify whether a transaction is fraudulent, given data like the transaction amount, location, purchased item or service, previous customer transactions etc. The response would be "Yes" or "No", and our aim is to make a prediction.
+
+(b)- Test Scores; Predicting the test score of students given their past grades. This situation was useful during the pandemic because colleges were able to pass without exam, it can be decided using past grades.
+- Salary; Predict the salary of an individual given their education, work history, skillsets and other relevant data (age, sex, etc.). The response is the salary amount. 
+- Sales; Predicting unit sales of a product given marketing/advertising data such as TV, Radio or Internet advert expenditure, and infer the importance of each advertising method. The response is the unit sales of the product.
+
+(c)- Market Research; Clustering groups of people within a city into distinct market segments to increase marketing advertisment or identify new opportunities. Given data such as incomes, location, age, sex, opinion polls and so on for a city, we can cluster the city into different consumer areas.
+- Body Tissue Classification; Clustering can be used to separate different types of tissue in medical images. This can be useful in identifying groups of tissue that are not normal and need further study.
+- Image distinctions; Separate an image into different clusters to make object recognition easier. For example, cluster image frames from a video camera in a car into 'other vehicles', 'humans', 'road signs' and so on can help in vehicles make the correct decision. 
+
+
+Question 5: What are the advantages and disadvantages of a very fexible (versus a less fexible) approach for regression or classifcation? Under what circumstances might a more fexible approach be preferred to a less fexible approach? When might a less fexible approach be preferred?
+
+More flexible approaches fit a non linear relationship, and usually provide better results than prediction when used for prediction. We favor flexible approaches over less flexible in the cases when our aim is prediction. A less flexible approach is suitalbe for inference problems. When we are interested in know how the target is related to the given labels. 
+
+Part 2:
+
+Question 8: This exercise relates to the College data set, which can be found in the file College.csv on the book website. It contains a number of variables for 777 different universities and colleges in the US. 
+```{r}
+# a
+library(ggplot2)
+library(ISLR)
+college<-College
+
+#b
+#View(College)
+college.rownames = rownames(college)
+head(college)
+
+#c
+#i.
+summary(college)
+
+#ii
+college$Private<- as.factor(college$Private)
+pairs(college[,1:10])
+
+#iii
+plot(college$Private, college$Outstate, xlab = 'Private University', ylab = 'Tuition in dollar($)')
+
+#iv
+Elite <- rep("No", nrow(college))
+Elite[college$Top10perc > 50] <- "Yes"
+Elite <- as.factor(Elite)
+college <- data.frame(college, Elite)
+summary(Elite)
+plot(college$Elite, college$Outstate,
+     xlab = "Elite University", ylab = "Tution in dollar($)")
+#v
+par(mfrow=c(2,2))
+hist(college$Apps, xlab = "Applications Received", main = "Apps using defalut bin sizes")
+hist(college$perc.alumni, col=2, xlab = "% of alumni who donate", main = "Apps")
+hist(college$S.F.Ratio, col=3, breaks=10, xlab = "Student/faculty ratio", main = "S.F ratio")
+hist(college$Expend, breaks=100, xlab = "Instructional expenditure per student", main = "Expend")
+
+#vi
+# what is the university with the most students in the top 10% of class
+row.names(college)[which.max(college$Top10perc)] 
+# High tuition correlates to high graduation rate
+plot(college$Outstate, college$Grad.Rate)
+# Colleges with low acceptance rate tend to have low S:F ratio.
+plot(college$Accept / college$Apps, college$S.F.Ratio) 
+```
+Question 9
+```{r}
+Auto <- read.csv("https://www.statlearning.com/s/Auto.csv", 
+                 header = TRUE, na.strings = "?")
+Auto <- na.omit(Auto)
+dim(Auto)
+# A
+# Quantitative: mpg,cylinders,displacement,horsepower, weight, acceleration, year.
+# Qualitative: name, origin.
+
+#B
+qualitative_columns <- which(names(Auto) %in% c("name", "origin", "originf"))
+sapply(Auto[,-qualitative_columns], range)
+
+#C
+sapply(Auto[,-qualitative_columns], mean)
+sapply(Auto[,-qualitative_columns], sd)
+
+#D
+sapply(Auto[-c(10:84),-qualitative_columns], range)
+sapply(Auto[-c(10:84),-qualitative_columns], mean)
+sapply(Auto[-c(10:84),-qualitative_columns], sd)
+
+#E
+pairs(Auto[, -qualitative_columns])
+cor(Auto[, -qualitative_columns])
+# From the pair plot and the correlation data, we can state there exists linear relationships between some of the variables.
+# For example, `mpg` has strong negative linear relationships with `displacement`, `cylinders` and `weight`. That is we can expect the `mpg` of the car to decrease as their `displacement` and `cylinders` increase.
+# `mpg` has a positive correlation with `year`, and this suggests that newer models tend to have higher `mpg` than older ones.
+
+#F
+# Both the plots and the correlation data suggests we can predict mpg.
+#   - An increase in the variables `displacement`, `cylinders` and `weight` will lead to a reduced `mpg`.
+#   - Newer models `year` tend to have higher `mpg`.
+
+
+```
+Question 10
+```{r}
+# A
+library(ISLR2)
+Boston
+?Boston
+dim(Boston)
+# 506 rows of suburbs or towns and 14 columns of prediction
+
+#B
+pairs(~crim+nox+dis+tax+medv, data = Boston)
+ # `crim` seems to have a negative linear relationship with `medv` and `dis`.
+ # `nox` has a negative linear relationship with `dis`.
+ #`dis` has a positive linear relationship with `medv`.
+
+#C
+cor(Boston[-1],Boston$crim)
+# There are some correlations between `crim` and other variables, but they are not as strong as some of the relationships we observed in the `Auto` dataset.
+# `crim` has a negative linear relationship with `medv`, `dis` and `black`.
+# `crim` has a positive linear relationship with `indus`, `nox`, `rad` and `tax`.
+
+#D
+# I) Suburbs with crime rate higher than 2 s.d from the mean(higher than 95% of suburbs).
+High.Crime = Boston[which(Boston$crim > mean(Boston$crim) + 2*sd(Boston$crim)),]
+range(Boston$crim) ; mean(Boston$crim) ; sd(Boston$crim)
+# - There are 16 suburbs with a crime rate higher than 95% of the other suburbs.
+#   - Some suburbs have extremely high rates of crime (5-8 s.d from the mean).
+#   - The range is very wide, it goes from a rate of near zero to 89.
+
+# II) Suburbs with tax rates higher than 2 s.d from the mean.
+High.Tax = Boston[which(Boston$tax > mean(Boston$tax) + 2*sd(Boston$tax)),]
+range(Boston$tax)
+ # - There are no suburbs with a tax rate higher than 2 s.d. from the mean. This seems reasonable as property tax rates are designed not to be extremely drastic.
+ # - The range is narrower than the crime rate.
+ # - Some suburbs do have tax rates higher than 1 s.d.(higher than 65% of suburbs) from the mean.
+
+# III) Suburbs with pupil teacher ratio higher than 2 s.d from the mean.
+High.PT = Boston[which(Boston$ptratio > mean(Boston$ptratio) + 2*sd(Boston$ptratio)),]
+range(Boston$ptratio)
+  # - There are no suburbs with a high pupil to teacher ratio, and this a reasonable outcome as educational laws limit the numbers of teacher or students per class/school.
+  # - The range in quite narrow, and and all pupil teacher ratios lie within 2 s.d. of the mean.
+  # - Some pupil teacher ratios are higher than 1 s.d.
+
+
+#E
+sum(Boston$chas==1)
+# 35 suburbs/towns bound the Charles river
+
+#F
+median(Boston$ptratio)
+
+#G
+which(Boston$medv == min(Boston$medv))
+#There are two suburbs (399 and 406) that have the lowest median property values.
+  #Values of other predictors for suburb 399
+Boston[399,]
+range(Boston$lstat)
+range(Boston$ptratio)
+# 'crim' is more than 2 s.d above the mean, therefore a very high crime in this suburb. Both 'ptratio' and 'lsat' are close to their maximum values.
+
+#h
+# more than 7 rooms
+sum(Boston$rm > 7)
+# more than 8 rooms
+sum(Boston$rm>8)
+summary(Boston)
+summary(subset(Boston, rm>8))
+# Relatively low 'crim', 'lsat' and much higher 'medv' when comparing to the IQR range.
+```
+
+Part 3
+```{r}
+#### Purchases of Ben and Jerry's Ice Cream
+benjer = read.csv("BenAndJerry.csv")
+
+## explore a bit
+names(benjer)
+
+## create a new variable for price per unit
+priceper1 = (benjer$price_paid_deal + benjer$price_paid_non_deal)/benjer$quantity
+y <- log(1+priceper1)
+
+## grab some covariates of interest
+## we'll create a properly formatted data.frame
+x <- benjer[,c("flavor_descr","size1_descr",
+	"household_income","household_size")]
+
+x$flavor_descr <- factor(x$flavor_descr)
+## relevel 'flavor' to have baseline of vanilla
+x$flavor_descr <- relevel(x$flavor_descr,"VAN")
+## coupon usage
+x$usecoup = factor(benjer$coupon_value>0)
+x$couponper1 <- benjer$coupon_value/benjer$quantity
+## organize some demographics
+x$region <- factor(benjer$region, 
+	levels=1:4, labels=c("East","Central","South","West"))
+x$married <- factor(benjer$marital_status==1)
+x$race <- factor(benjer$race,
+	levels=1:4,labels=c("white","black","asian","other"))
+x$hispanic_origin <- benjer$hispanic_origin==1
+x$microwave <- benjer$kitchen_appliances %in% c(1,4,5,7)
+x$dishwasher <- benjer$kitchen_appliances %in% c(2,4,6,7)
+x$sfh <- benjer$type_of_residence==1
+x$internet <- benjer$household_internet_connection==1
+x$tvcable <- benjer$tv_items>1
+
+## fit the regression
+fit <- glm(y~., data=x) 
+
+## grab the non-intercept p-values from a glm
+## -1 to drop the intercept, 4 is 4th column
+pvals <- summary(fit)$coef[-1,4] 
+
+
+### ####### ###
+### Mo Code ###
+### ####### ###
+
+#### Exploratory Analysis ####
+
+# What Flavors do we have?
+par(mfrow=c(1,1))
+par(mar=c(5,10,5,5))
+barplot(table(benjer$flavor),border=NA, las=2)
+
+class(benjer$promotion_type) #gotta make it a factor
+hist(y); hist(priceper1);  #the non-logged is more normal
+hist(benjer$promotion_type) #Mostly store features
+#benjer$promotion_type[is.na(benjer$promotion_type)]=0 #Cant have blanks, making it 5 is going to bite you in the ass, should be 0
+#benjer$promotion_type=factor(benjer$promotion_type)
+boxplot(y[benjer$promotion_type>0] ~ benjer$promotion_type, col= levels(factor(benjer$promotion))) #gotta add levels to the boxplot
+#Not super helpful; lots of data outside >1sd and no clear differences
+plot(priceper1[benjer$promotion_type>0] ~ benjer$quantity[benjer$promotion_type>0], col=factor(benjer$promotion_type), pch=20)
+legend("topright", fill=levels(factor(benjer$promotion_type)), legend=c("Store Feature","Store Coupon", "Manufacturer Coupon", "Other Deal"))
+#green clustered to top and price volatility reduces with quantity; marginally helpful graph
+
+class(benjer$region)
+boxplot(y ~ benjer$region, col=levels(factor(benjer$region))) #useless
+plot(y ~ quantity, data=benjer, col=factor(benjer$region), pch=20) #useless
+regionpromo=glm(promotion_type ~ region, data=benjer)
+
+#salestable <- tapply(exp(oj$logmove), oj[,c("feat","brand")], sum)
+table <- tapply(y[benjer$promotion_type>0], benjer[,c("promotion_type","region")], sum)
+#rownames(table)= c("Store Feature","Store Coupon", "Manufacturer Coupon", "Other Deal")
+colnames(table)= c("East","Central","South","West")
+mosaicplot(table, col=levels(factor(benjer$region)), main="(price?) by promotion and region")
+#not sure this is right, is the y above irrelavent? Professor suggested plotting only 2 categorical variables.
+## West advertises the most, East has more manufacture coupons (is B&J from the East)
+
+### Analyze the given model ###
+
+summary(fit)
+print("The model sumamrizes log price versus a number of regressors, specifically"); names(x)
+fit2 <- glm(y~. - flavor_descr, data=x) 
+summary(fit2)
+print("ignoring flavor we find that all the regressors save asisan, hispanic and dishwasher were significant, let's remove these")
+fit3 <- glm(y~. -flavor_descr -race -dishwasher - hispanic_origin, data=x)
+summary(fit3)
+n=nrow(x)
+BIC <- c(reg1=extractAIC(fit, k=log(n))[2],
+         reg2=extractAIC(fit2, k=log(n))[2],
+         reg3=extractAIC(fit3, k=log(n))[2])
+# Model probabilities
+eBIC <- exp(-0.5*(BIC-min(BIC)))
+probs <- eBIC/sum(eBIC)
+round(probs, 5)
+print("The simplified model is better according to BIC. Could use out-of-sample to test, but this should work for now")
+
+
+### Mo Notes
+#discrete quantitites make it hard to see relations
+#would like to see sale vs region in mosaic
+
+```
+Question 1
+The variables that are interesting to me are flavor_descr, size1_descr, household_income, household_size, along with newly created variables like priceper1 and several demographic variables (like region, married, race) because they show the various of variables used in the data to reduce bias and get a comprehensive model. Also, these variables can show how different flavors are preferred in different regions, how household size or income might affect purchasing behavior, or how promotions influence the price paid.
+```{r}
+# Histogram of household_income:
+# This histogram will give you an idea of the income distribution of the customers.
+hist(benjer$household_income, main="Histogram of Household Income",
+     xlab="Household Income", col="blue", border="black")
+#Box Plot for household_income across different regions:
+# This box plot shows the variation in household income across different regions, helping to identify if certain regions have higher or lower income levels.
+boxplot(benjer$household_income ~ benjer$region, main="Household Income across Regions",
+       xlab="Region", ylab="Household Income", col="pink")
+#Bar Plot for flavor_descr:
+# A bar plot for the flavor descriptions will illustrate the popularity of different flavors.
+barplot(table(benjer$flavor_descr), main="Flavor Popularity",
+        xlab="Flavor", ylab="Frequency", col="red", las=2)
+```
+Together, these visualizations tells a story about who the customers of Ben and Jerry's are, in terms of income and region, and what their preferences are in terms of flavors. This information can be critical for business strategies such as marketing, product placement, and inventory management. Additionally, if there are significant regional differences in income or flavor preference, it might suggest a need for region-specific marketing strategies.
+
+Question 2
+
+The regression model (glm(y~., data=x)) is a generalized linear model with the log of price per unit (y) as the dependent variable and all variables in x as independent variables.The coefficients will give you the expected change in the log-transformed price per unit for a one-unit change in each predictor variable, holding all other variables constant. Since the dependent variable is log-transformed, these coefficients represent percentage changes rather than absolute changes.
+```{r}
+# To improve it interaction terms and transforming some variables.
+fit<- glm(y ~ ., data = x)
+# Improved model with interaction terms and transformations
+fit_improved <- glm(y ~ . + 
+                      I(household_income^2) +  
+                      (flavor_descr*region),
+                    data = x)
+
+# Summary of the improved mode
+Tt<-summary(fit_improved)
+aic_original <- AIC(fit)
+bic_original <- BIC(fit)
+
+# Calculate AIC and BIC for the improved model
+aic_improved <- AIC(fit_improved)
+bic_improved <- BIC(fit_improved)
+
+# Print the AIC and BIC values for comparison
+cat("AIC Original Model: ", aic_original, "\n")
+cat("BIC Original Model: ", bic_original, "\n")
+cat("AIC Improved Model: ", aic_improved, "\n")
+cat("BIC Improved Model: ", bic_improved, "\n")
+```
+Utilizing the AIC and BIC criterion we can see that more flexibility is added to the model with the interaction terms but it leads to over fitting, since the BIC and AIC are higher for the improved model. Hence, simpler model is preferred and they are a quantitative way to decide which model is the best balance of simplicity and predictive power.
+
+Question 3
+- Using the p-values we can see that using the log price as the predictor and not including the 'flavor_descr', we see that all of the factors are significant in predicting the log price of the model, meaning likely genuine effect or association in the data being analyzed. However, it seems like 'raceasian', 'hispanic_orginTrue', and 'dishwasherTrue' are not significant to the model because it is not strong enough to support a significant effect or association in the statistical sense.
+- The second model with removing of 'race','flavor_descr', 'dishwasher', and 'hispanic_orgin' we can see the evidence that all the variables are significant in the model as predictors. This means there is effect or association in the data analyzed.
+- Using these two models and their p-values we can see that in our story above from question 1, flavor_descr has not affect on the story income and region when targeting a demographic for the marketing. However, it does affect other aspects of marketing, product placement, and inventory management as they show what kinds of flavor is wanted by consumers to increase their sales. Also, the second model orgin and race affect the whole model making it insignificant in terms of product placement and what kind of demographic needs to be targeted to increase their sale, which can lead to higher log prices to meet the demand.

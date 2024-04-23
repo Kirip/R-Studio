@@ -1,0 +1,232 @@
+---
+title: "Econ 573-Summary Statistics"
+author: "Jabbir Ahmed"
+date: "2024-04-19"
+output:
+  word_document: default
+  pdf_document: default
+---
+```{r}
+library(caret)
+library(nnet)
+library(MASS)
+library(rpart)
+library(gbm)
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(corrplot)
+library(class)
+library(e1071)
+library(randomForest)
+library(xgboost)
+library(kknn)
+
+data <- read_excel("cleaned_players.xlsx")
+
+head(data)
+
+# Subset the data to only include rows where 'pick' column is not NA
+data_with_picks <- data[!is.na(data$pick), ]
+
+# Basic Summary statistics
+summary(data)
+
+data_with_picks$`ast/tov`<-NULL
+data_with_picks[is.na(data_with_picks)] <- 0
+# Basic Exploratory Data Analysis
+summary(data_with_picks$pick)
+# Summary of all data
+summary(data_with_picks)
+```
+
+__Important Variables__
+  %IncMSE (Percent Increase in Mean Squared Error): This value indicates how much more error the model makes when information from the variable is randomly permuted. Higher values mean that the model relies heavily on the variable, and its absence (or incorrect values) causes a significant drop in model accuracy.
+
+  IncNodePurity: This metric measures the total decrease in node impurity (like variance for regression trees) that results from splits over a given variable, summed over all trees. Higher values indicate that the variable is effective at reducing uncertainty and creating more homogeneous groups.
+  
+__Summary__
+Using the randomforest function we found that the most important 15 variables were 'yr', 'bpm', 'gbpm', 'adrtg', 'obpm', 'adjoe', 'team', 'dgbpm', 'pid', 'stops', 'player_name', 'drtg', 'dporpag', 'porpag', and 'twoP_per'. These indicate the variables that affect picks and what round they would be selected in either lottery (top 15) or late round draft pick (have positive correlation)
+
+
+```{r}
+library(randomForest)
+# Fit the Random Forest model
+rf_model <- randomForest(pick ~ ., data=data_with_picks, importance=TRUE)
+
+# Get variable importance
+importance(rf_model)
+
+# Plot variable importance
+varImpPlot(rf_model)
+
+# Display the ranking of the most important variables to getting picked(drafted) 
+# Create a data frame of the variable importance metrics you provided
+importance_data <- data.frame(
+  Variable = c("team", "year", "player_name", "GP", "Min_per", "Ortg", "usg", "eFG", "TS_per", 
+               "ORB_per", "DRB_per", "AST_per", "TO_per", "FTM", "FTA", "FT_per", "twoPM", "twoPA", 
+               "twoP_per", "TPM", "TPA", "TP_per", "blk_per", "stl_per", "ftr", "yr", "ht", "porpag", 
+               "adjoe", "pfr", "pid", "drtg", "adrtg", "dporpag", "stops", "bpm", "obpm", "dbpm", 
+               "gbpm", "mp", "ogbpm", "dgbpm", "oreb", "dreb", "treb", "ast", "stl", "blk", "pts", 
+               "...52", "...53", "ncaa_tourn", "coach_ind", "p5", "drafted"),
+  IncMSE = c(9.129342, 5.548139, 5.855216, 6.373761, 5.977997, 3.817800, 5.907088, 5.864129, 
+             5.865510, 4.687507, 3.135905, 3.944767, 5.504002, 5.296430, 6.907900, 3.260329, 
+             7.503360, 4.968169, 6.895846, 2.316806, 4.014495, 2.449073, 4.924116, 2.839517, 
+             1.679954, 44.539786, 6.746214, 7.989420, 9.757614, 5.182092, 7.473825, 7.788465, 
+             11.167715, 6.905129, 7.357886, 14.184336, 9.984392, 6.392465, 13.408541, 6.238989, 
+             6.855874, 9.537890, 2.611184, 3.851307, 4.156885, 3.338173, 5.686509, 5.694015, 
+             8.190218, 0.000000, 4.358829, -0.632275, 6.233344, 3.079307, 0.000000),
+  IncNodePurity = c(7577.7848, 2740.1757, 7722.2213, 4678.4839, 3597.4896, 4403.2441, 5358.5138, 
+                    4811.4868, 5746.3714, 3866.0472, 4354.7826, 4252.6550, 6528.7278, 4240.0149, 
+                    5087.4762, 5128.1262, 5374.2364, 4497.5591, 5907.1424, 2646.4264, 2879.7247, 
+                    3532.0750, 3854.3875, 4582.1148, 5302.5977, 23575.4302, 3694.9529, 5310.0436, 
+                    7555.0609, 4162.2518, 7867.3230, 6511.9217, 10424.6592, 6370.3529, 7681.5745, 
+                    15667.1532, 7532.9859, 5432.5050, 15265.6141, 3533.0129, 5712.6395, 6957.1135, 
+                    3933.1670, 4115.3871, 4025.8095, 3970.0255, 4873.5969, 4597.6154, 4799.3519, 
+                    0.0000,3963.5151,414.8406,4484.6142,865.8934,0.0000)
+)
+
+# Selecting the Most important Variables 
+# Normalize the importance measures
+importance_data$Normalized_IncMSE <- scale(importance_data$IncMSE, center = TRUE, scale = TRUE)
+importance_data$Normalized_IncNodePurity <- scale(importance_data$IncNodePurity, center = TRUE, scale = TRUE)
+
+# Compute a composite score by averaging the normalized values
+importance_data$Composite_Score <- (importance_data$Normalized_IncMSE + importance_data$Normalized_IncNodePurity) / 2
+
+# Order the variables by the composite score in descending order to get the most important ones
+importance_data <- importance_data[order(-importance_data$Composite_Score),]
+
+# Select the top 15 most important variables
+top_15_variables <- importance_data[1:15,]
+
+# Print the names and scores of the top 15 variables
+print(top_15_variables[, c("Variable", "IncMSE", "IncNodePurity", "Composite_Score")])
+print(top_15_variables$Variable)
+
+```
+
+__Correlation Analysis__
+ correlation analysis to see how each predictor variable correlates with the outcome variable. High correlation coefficients (either positive or negative) can indicate potential predictors.
+ 
+  __Summary__
+The correlation analysis between the draft pick and various player metrics demonstrates significant insights into factors influencing draft positions in sports. Performance-related metrics such as BPM, GBPM, OBPM, AdjOE, and Stops, which are negatively correlated with the pick, suggest that better performance scores are associated with being selected earlier in the draft. Interestingly, defensive ratings like ADRTG and DRTG show a positive correlation, indicating that higher values in these ratings correlate with later picks, possibly suggesting these metrics alone might not fully capture what scouts prioritize. On the other hand, nominal identifiers like player_name_numeric, pid and team exhibit negligible correlations, underscoring that these aspects have minimal direct impact on drafting outcomes. This analysis highlights the pivotal role of comprehensive performance evaluations over basic player identifiers in influencing draft decisions.
+```{r}
+# Using the most important variables excluding "yr", "player_name", "team"
+# Create a new data frame with only the variables of interest
+analysis_data <- data_with_picks[c("pick", "bpm", "gbpm", "adrtg", "obpm", "adjoe", "dgbpm", "pid", "stops", "drtg", "dporpag", "porpag", "twoP_per")]
+
+# Calculate the correlation matrix
+cor_matrix <- cor(analysis_data, use = "pairwise.complete.obs")  # this option deals with NA values by using available data
+
+# Print the correlation matrix, specifically looking at 'pick'
+pick_correlations <- cor_matrix["pick", ]
+print(pick_correlations)
+
+# Visualize the correlation matrix
+corrplot(cor_matrix, method="circle")
+```
+
+___Visual Analysis___
+Use visual tools like scatter plots or pair plots to visualize relationships and detect patterns, outliers, or non-linear relationships.
+
+  __Summary__
+Below are boxplot for pick which we used as the response variable and the other boxplot are for variables within the data. Also, we plotted a bpm vs pick because this is the most (negative) correlated variable with pick, which showcases what position in the draft a player was selected in regards to their plus/minus. The ggpairs functions shows correlation between all the most important variables in the data from the randomforest functions that we developed.
+```{r}
+# Load the necessary library
+library(GGally)
+
+# Create a pair plot for selected variables
+gg<-ggpairs(data[, c("pick","bpm", "gbpm", "adrtg", "obpm", "adjoe", "dgbpm", "pid", "stops", "drtg", "dporpag", "porpag", "twoP_per")])
+
+# Scatter plot of 'pick' vs 'bpm'
+ggplot(data_with_picks, aes(x=bpm, y=pick)) +
+  geom_point(alpha=0.5) +
+  labs(title="Relationship between Box Plus/Minus and Draft Pick",
+       x="Box Plus/Minus", y="Draft Pick")
+
+
+# Visualization of the data summary
+boxplot(data_with_picks$bpm,
+        main = "Boxplot for Pick",
+        ylab = "Pick(Draft)",
+        col = "blue",
+        notch = TRUE  # adds a notch around the median
+)
+
+numeric_data <- data_with_picks %>% select_if(is.numeric)
+# Create a boxplot for each numeric variable
+boxplot(numeric_data,
+        main = "Boxplot of Summary Statistics",
+        xlab = "Variables",
+        ylab = "Values",
+        las = 2,  # makes the axis labels perpendicular to the axis
+        col = rainbow(ncol(numeric_data))  # adds colors to the boxplots
+)
+```
+___Linear Regression___
+
+```{r}
+# Example of mapping 'yr' to ordinal numbers
+yr_levels <- c("Fr", "So", "Jr", "Sr")
+data_with_picks$yr_numeric <- as.integer(factor(data_with_picks$yr, levels = yr_levels))
+
+# Linear regression to predict 'pick'
+lm_model <- lm(pick ~ ., data=data_with_picks)
+
+# Display the model summary
+summary(lm_model)
+plot(lm_model)
+
+```
+___Summary___
+  The regression output indicates an exceptionally high level of statistical significance for nearly all predictor variables, with an essentially perfect multiple R-squared value of 1. This implies that the model explains all variability in the draft picks, which is highly unusual in real-world data and suggests overfitting, especially given the presence of singularities (multicollinearity) among the predictors. Singularities occur when there's perfect or near-perfect multicollinearity, meaning some variables can be linearly predicted from the others with near-perfect accuracy. The extraordinarily large F-statistic and its p-value indicate that the predictors collectively have a statistically significant effect on the response variable; however, the presence of "not defined because of singularities" for 97 coefficients means that the model is too complex and suffers from multicollinearity, rendering many coefficients indeterminable. The very small residual standard error also points to an overfitted model. This result is practically implausible and warrants a thorough investigation into data processing, variable selection, and model specification.
+ 
+```{r}
+# Linear regression to predict 'pick' without 'player_name' and 'team'
+lm_model2 <- lm(pick~yr + bpm + gbpm + adrtg + obpm + adjoe + dgbpm + pid + stops + drtg + dporpag + porpag + twoP_per, data = data_with_picks)
+summary(lm_model2)
+```
+ ___Summary___
+  This summary presents the results of a linear regression analysis with the variable "pick" as the dependent variable and a set of other variables as predictors. The model has identified several statistically significant predictors of "pick". Specifically, the years of playing experience represented as "yrJr" (Junior), "yrSo" (Sophomore), and "yrSr" (Senior) are all positively associated with "pick", with Junior and Senior classifications showing the strongest effects. The offensive rating "adrtg" and offensive efficiency "adjoe" are also positively correlated with "pick", suggesting that players with higher offensive ratings and efficiencies are likely to be picked earlier. Surprisingly, the two-point field goal percentage "twoP_per" is negatively associated with the pick, indicating that players with higher two-point shooting percentages may be picked later. Variables such as "bpm" (Box Plus/Minus), "stops", "gbpm" (Game-Based Plus/Minus), "obpm" (Offensive Box Plus/Minus), "dgbpm" (Defensive Game-Based Plus/Minus), "pid" (Player ID), "drtg" (Defensive Rating), and "dporpag" (Defensive Points Over Replacement Per Adjusted Game) were not statistically significant. The model has a moderate R-squared value of approximately 0.2983, indicating that about 29.83% of the variability in "pick" is explained by the model. The adjusted R-squared is slightly lower, accounting for the number of predictors in the model. The overall model is statistically significant, as indicated by the F-statistic and its corresponding p-value.
+
+
+__Logistic Regression__
+```{r}
+# Split the data into training and test sets
+set.seed(123)  # for reproducibility
+index <- createDataPartition(data_with_picks$pick, p = 0.8, list = FALSE)
+train_data <- data_with_picks[index, ]
+test_data <- data_with_picks[-index, ]
+
+```
+
+__LDA/QDA__
+```{r}
+
+```
+
+__Classification Trees__
+```{r}
+
+```
+
+__Boosting__
+```{r}
+```
+
+__SVM__
+```{r}
+
+```
+
+__kNN__
+```{r}
+
+```
+
+__Final__
+```{r}
+
+```
+

@@ -1,0 +1,414 @@
+---
+title: "Homework 4 Econ 573"
+author: "Jabbir Ahmed"
+date: "2024-03-21"
+output:
+  pdf_document: default
+  word_document: default
+---
+```{r}
+library(MASS)
+library(randomForest)
+require(caTools)
+library(ISLR)
+library(tree)
+library(dplyr)
+library(tidyr)
+library(glmnet) #Ridge Regression and Lasso
+library(gbm) 
+```
+
+PART 1
+  __Problem 3__ We now review k-fold cross-validation:
+
+__A__ Explain how k-fold cross-validation is implemented.
+
+In k fold cross-validation, the whole observation are divided into k groups(folds), at given time, one fold is used for finding the error by a model which is trained on the remaining k-1 folds. This is repeated k times, such that each fold is once used as a validation set. The final error is the mean of all the errors obtained from k folds, which is known as the final MSE.
+
+
+__B__ What are the advantages and disadvantages of k-fold crossvalidation relative to:
+  i. The validation set approach?
+Advantage -- Gives better estimate of test error as compared to validation set approach. Validation set approach is higly variable, it depends on which the observations are selected in train validation set, and hence repeating the same procedure with validation set approach may give us a different results.
+
+Disadvantage -- Computationally expensive, as a model is fitted k times, as compared to one time validation set approach.
+
+  ii. LOOCV?
+Advantage -- Computationally faster as compared to LOOCV, as model is fitted k times, whereas in LOOCV is fitted n times (n>k).
+
+Disadvantage -- LOOCV uses more observations for training than k fold, hence it results in less bias.
+
+__Problem 5__
+In Chapter 4, we used logistic regression to predict the probability of default using income and balance on the Default data set. We will now estimate the test error of this logistic regression model using the validation set approach. Do not forget to set a random seed before beginning your analysis
+```{r}
+# __A__ 
+library(ISLR)
+library(MASS)
+set.seed(1)
+fit.glm = glm(default ~ income + balance, data = Default, family = "binomial")
+
+
+# __B__
+# i
+train = sample(dim(Default)[1], dim(Default)[1] / 2)
+# ii
+fit.glm = glm(default ~ income + balance, data = Default[train,], family = "binomial")
+fit.glm = glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+#iii
+glm.probs = predict(fit.glm, newdata = Default[-train, ], type="response")
+glm.pred=rep("No",5000)
+glm.pred[glm.probs>0.5] = "Yes"
+#iv
+verror = mean(glm.pred != Default[-train, ]$default)
+print(paste('Validation set error is ', verror))
+
+# __C__
+train=sample(dim(Default)[1], dim(Default)[1]/2)
+glm.fit=glm(default~income+balance, data=Default, family=binomial, subset=train)
+glm.pred=rep("No", dim(Default)[1]/2)
+glm.probs=predict(glm.fit, Default[-train,], type="response")
+glm.pred[glm.probs>0.5]="Yes"
+mean(glm.pred!=Default[-train,]$default)
+
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+fit.glm <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+probs <- predict(fit.glm, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(probs))
+pred.glm[probs > 0.5] <- "Yes"
+mean(pred.glm != Default[-train, ]$default)
+
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+fit.glm <- glm(default ~ income + balance, data = Default, family = "binomial", subset = train)
+probs <- predict(fit.glm, newdata = Default[-train, ], type = "response")
+pred.glm <- rep("No", length(probs))
+pred.glm[probs > 0.5] <- "Yes"
+mean(pred.glm != Default[-train, ]$default)
+
+# The error rate appears to vary a little bit between 0.024 and 0.028. We see that the validation estimate of the test error rate can be variable, depending on precisely which observations are included in the training set and which observations are included in the validation set.
+
+#__D__
+train <- sample(dim(Default)[1], dim(Default)[1] / 2)
+fit.glm <- glm(default ~ income + balance + student, data = Default, family = "binomial", subset = train)
+pred.glm <- rep("No", length(probs))
+probs <- predict(fit.glm, newdata = Default[-train, ], type = "response")
+pred.glm[probs > 0.5] <- "Yes"
+mean(pred.glm != Default[-train, ]$default)
+# It doesn’t seem that adding the “student” dummy variable leads to a reduction in the validation set estimate of the test error rate, in fact it appears to be slightly higher.
+```
+__Problem 6__ We continue to consider the use of a logistic regression model to predict the probability of default using income and balance on the Default data set. In particular, we will now compute estimates for the standard errors of the income and balance logistic regression coefficients in two different ways: (1) using the bootstrap, and (2) using the standard formula for computing the standard errors in the glm() function. Do not forget to set a random seed before beginning your analysis.
+```{r}
+# __A__
+set.seed(111)
+glm.fit = glm(default~income+balance, data = Default, family = "binomial")
+coeff<-summary(glm.fit)$coefficients[1:3,2]
+print(sprintf("Intercept is %f, the coeff of balance is %f, the coeff for income is %f", 
+               coeff['(Intercept)'], 
+               coeff['balance'], 
+               coeff['income']))
+
+# __B__
+boot.fn=function(data, index){
+  default = data$default[index]
+  income = data$income[index]
+  balance = data$balance[index]
+  fit=glm(default~income+balance, data=data, family="binomial", subset=index)
+  return(summary(fit)$coefficients[1:3,2])
+}
+# "Intercept is 0.434756, the coeff of balance is 0.000227, the coeff for income is 0.000005"   
+
+# __C__
+library(boot)
+boot_result<-boot(Default, boot.fn, 100)
+boot_result
+
+#D
+# The estimated standard errors obtained by the two methods are fairly similar. The standard error are slightly lower for both income and balance coefficients. In this case, using bootstrapping reduces the standard error for coefficients estimates.
+```
+PART 2
+  __Problem 3__ 
+Suppose we ft a curve with basis functions b1(X) = X, b2(X) =
+(X − 1)2I(X ≥ 1). (Note that I(X ≥ 1) equals 1 for X ≥ 1 and 0
+otherwise.) We ft the linear regression model
+              Y = β0 + β1b1(X) + β2b2(X) + e,
+and obtain coefcient estimates βˆ0 = 1, βˆ1 = 1, βˆ2 = −2. Sketch the estimated curve between X = −2 and X = 2. Note the intercepts, slopes, and other relevant information.
+```{r}
+X = seq(-2,2,0.1)
+Y = rep(NA,length(X))
+
+for (i in 1:length(X)){
+  if (X[i]<1){
+    Y[i] = 1 + 1*X[i]
+  }
+  else{
+    Y[i] = 1 + 1*X[i] - 2*(X[i]-1)^2
+  }
+}
+
+plot(X,Y,type='l')
+abline(h=0);abline(v=0);abline(v = 1, col = "blue")
+grid()
+# The curve is linear when -2<X<=1, this portion has a slope and y intercept of 1. The curve then takes a quadratic shape when 1<X<=2.
+```
+  __Problem 9__
+  This question uses the variables dis (the weighted mean of distances to fve Boston employment centers) and nox (nitrogen oxides concentration in parts per 10 million) from the Boston data. We will treat dis as the predictor and nox as the response.
+```{r}
+# __A__
+library(MASS)
+plot(Boston$dis,Boston$nox, xlab="Distance", ylab="Nox values")
+
+model.1 = glm(nox~poly(dis,3), data=Boston)
+summary(model.1)
+
+dis.grid = seq(from=min(Boston$dis),to=max(Boston$dis),0.2)
+preds=predict(model.1,newdata=list(dis=dis.grid), se=T)
+lines(dis.grid,preds$fit,col="blue",lwd=3)
+lines(dis.grid,preds$fit+2*preds$se,col="blue",lwd=1,lty=2)
+lines(dis.grid,preds$fit-2*preds$se,col="blue",lwd=2,lty=2)
+# The regression summary shows a cubic fit is significantly statistically
+#Te cubic fit plotted on the chart and does not appear to match the underlying shape of data
+
+set.seed(2)
+
+boston_df = Boston
+boston_sample = sample.split(boston_df$dis, SplitRatio = 0.80)
+boston_train = subset(boston_df, boston_sample==TRUE) 
+boston_test = subset(boston_df, boston_sample==FALSE)
+rss = rep(0,10)
+colours = rainbow(10)
+plot(Boston$dis,Boston$nox,xlab="Distance", ylab="Nox values", main="Polynomial fits from degree 1-10.")
+
+for (i in 1:10){
+  model = glm(nox~poly(dis,i), data=boston_train)
+  rss[i] = sum((boston_test$nox - predict(model,newdata=list(dis=boston_test$dis)))^2)
+  preds=predict(model,newdata=list(dis=dis.grid))
+  lines(dis.grid,preds,col=colours[i], lwd=2, lty=1)
+}
+
+legend(10,0.8,legend=1:10, col= colours[1:10],lty=1,lwd=2)
+rss
+# The RSS decreases from the linear(0.533) to the cubic model(0.361), and increases thereafter. This supports the argument that the cubic model provides the best fit.
+
+# __B__
+plot(1:10,rss,xlab="Polynomial degree", ylab="RSS", main="RSS on test set vs polynomial degree", type='b')
+
+# RSS is at a minimum for the degree 3 polynomial.
+
+# __C__
+require(boot)
+set.seed(3)
+cv.errors <- rep(NA, 10)
+
+for (i in 1:10){
+  fit <- glm(nox ~ poly(dis, i), data=Boston)
+  cv.errors[i] <- cv.glm(Boston, fit, K=10)$delta[1]
+}
+cv.errors
+plot(cv.errors, type='b')
+points(which.min(cv.errors), cv.errors[3], col="red", pch=20, cex=2)
+# The degree of the polynomial that minimizes test MSE is 3.
+
+# __D__
+# Regression spline with four degrees of freedom.
+require(splines)
+spline.fit = lm(nox~bs(dis,df=4), data=Boston)
+summary(spline.fit)
+attr(bs(Boston$dis,df=4),"knots")
+plot(Boston$dis,Boston$nox,xlab="Distance", ylab="Nox values")
+preds = predict(spline.fit, newdata=list(dis=dis.grid), se=T)
+lines(dis.grid, preds$fit,col="blue",lwd=2)
+lines(dis.grid, preds$fit+2*preds$se,col="blue",lwd=1,lty=2)
+lines(dis.grid, preds$fit-2*preds$se,col="blue",lwd=1,lty=2)
+# There is only one knot at dis 3.20745, which is located at 50th percentile of dis.A regression spline with four degrees of freedom is statistically significant. The knots are chosen automatically when using the df() function. In this case we have single knot at the 50th percentile value.
+
+# __E__
+rss = rep(0,18)
+colours = rainbow(18)
+plot(Boston$dis,Boston$nox,xlab="Distance", ylab="Nox values",main="Regression splines using degrees from 3-10")
+
+# Degree of freedom starts from 3, anything below is too small.
+for (i in 3:20){ 
+  spline.model = lm(nox~bs(dis,df=i), data=boston_train)
+  rss[i-2] = sum((boston_test$nox - predict(spline.model,newdata=list(dis=boston_test$dis)))^2)
+  preds=predict(spline.model,newdata=list(dis=dis.grid))
+  lines(dis.grid,preds,col=colours[i-2], lwd=2, lty=1)
+}
+legend(10,0.8,legend=3:20, col=colours[1:18],lty=1,lwd=2)
+
+# Degree with minimum RSS value.
+which.min(rss)+2
+# Smaller differences between spline fits than with the polynomial fits. RSS is lowest for the degree 12 model.
+
+# __F__
+#__Cross validation:__
+k=10
+set.seed(3)
+
+folds = sample(1:k, nrow(Boston), replace=T)
+cv.errors = matrix(NA,k,18, dimnames = list(NULL, paste(3:20)))  #Matrix to store cv errors for degrees 3 to 20.
+
+  # Create models (total=k) for each degree using the training folds.
+  # Predict on held out folds and calculate their MSE's(total=k).
+  # Continue until all j degrees have been used.
+  # Take the mean of MSE's for each degree.
+
+for(j in 3:20){
+  for(i in 1:k){
+    spline.model=lm(nox~bs(dis,df=j), data=Boston[folds!=i,])
+    pred=predict(spline.model,Boston[folds==i,],id=i)
+    cv.errors[i,j-2]=mean((Boston$nox[folds==i] - pred)^2)
+  }
+}
+
+mean.cv.errors = apply(cv.errors,2,mean)
+mean.cv.errors[which.min(mean.cv.errors)]
+#The minimum for the CV errors is using degree 8. This is different to the degree 12 model found using a validation set. 
+
+#__Cross validation using cv.glm() function:__
+set.seed(3)
+cv.err = rep(0,18)
+  
+for(j in 3:20){
+    fit=glm(nox~bs(dis,df=j), data=Boston)
+    cv.err[j-2] = cv.glm(Boston, fit, K=10)$delta[1]
+}
+
+which.min(cv.err)+2
+# The cv.glm() method finds a minimum at degree 8. This is the same degree found using the previous cross validation method, but different to using a validation set.
+
+
+```
+PART 3
+  __Problem 1__
+Draw an example (of your own invention) of a partition of twodimensional feature space that could result from recursive binary splitting. Your example should contain at least six regions. Draw a decision tree corresponding to this partition. Be sure to label all aspects of your fgures, including the regions R1, R2,..., the cutpoints t1, t2,..., and so forth.
+
+  __Problem 5__
+Suppose we produce ten bootstrapped samples from a data set
+containing red and green classes. We then apply a classifcation tree to each bootstrapped sample and, for a specifc value of X, produce 10 estimates of P(Class is Red|X): 0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, and 0.75. There are two common ways to combine these results together into a single class prediction. One is the majority vote approach discussed in this chapter. The second approach is to classify based on the average probability. In this example, what is the fnal classifcation under each of these two approaches?
+
+If we look at majority vote approach, Count P(Class is Red|x) < 0.5 = 4, then 6 out of 10 probabilities have P(Class is Red[x]>=0,5) = 0.6. The class predicted is Red class.
+
+For the average probability, we will take the average of all the probabilities here which will be 0.45, hence the class predicted in this case will be Green class 
+
+  __Problem 10__
+```{r}
+library(ISLR2)
+# __A__
+# NA values dropped from Salary, and Log transform.
+data("Hitters")
+
+Hitters = Hitters %>% 
+  na.omit() %>% 
+  mutate(Salary = log(Salary))
+
+# __B__
+# Training and test sets with 200 and 63 observations respectively.
+set.seed(4)
+sample.data = sample.split(Hitters$Salary, SplitRatio = 200/263) 
+train.set = subset(Hitters, sample.data==T)
+test.set = subset(Hitters, sample.data==F)
+train = Hitters[1:200, ]
+
+test = Hitters[-c(1:200), ]
+
+# __C__
+# Boosting with 1000 trees for a range of lambda values, and computing the training and test mse.
+set.seed(123)
+
+pow = seq(-2,0,0.1)
+
+lambdas = 10^pow
+
+train.error = rep(NA, length(lambdas))
+
+for (i in 1:length(lambdas)) {
+  
+  model = gbm(Salary~., data = train,
+                        distribution = "gaussian",
+                        n.trees = 1000,
+                        shrinkage = lambdas[i])
+  
+  # predict train error
+  model.preds = predict(model, train, n.trees = 1000)
+  train.error[i] = mean((model.preds - train$Salary)^2)
+    
+}
+
+# plotting train error against Lambdas
+plot(lambdas, train.error, type="b", xlab = "Shrinkage", ylab = "Train MSE")
+
+
+# __D__ 
+# Values of lambdas that give the minimum test and train errors.
+set.seed(123)
+
+test.error = rep(NA, length(lambdas))
+
+for (i in 1:length(lambdas)) {
+  
+  model = gbm(Salary~., data = train,
+                        distribution = "gaussian",
+                        n.trees = 1000,
+                        shrinkage = lambdas[i])
+  
+  # predict train error
+  model.preds = predict(model, test, n.trees = 1000)
+  test.error[i] = mean((model.preds - test$Salary)^2)
+  
+}
+
+
+plot(lambdas, test.error, type = "b", xlab = "Shrinkage", ylab = "Test MSE")
+boost.model.test.err = min(test.error)
+
+boost.model.test.err
+
+# The test MSE is high when lambda is very small, and it also rises as values of lambda gets bigger than 0.01. The minimum test MSE is 0.196 at lambda=0.01.
+# The train MSE decreases rapidly as lambda increases. The minimum training MSE is 8.8e-11 when lambda=0.48.
+# The Minimum Test MSE obtained by boosting is 0.2515519
+# __E__
+# __Multiple Linear Regression (Chapter 3)__
+lm.model = lm(Salary~., train)
+lm.preds = predict(lm.model, test)
+lm.test.err = mean((lm.preds - test$Salary)^2)
+plt.err = data.frame(Linear_Model = lm.test.err)
+lm.test.err
+# __Lasso model (Chapter 6)__
+# Matrix of training and test sets, and their respective responses. 
+x.model.mat = model.matrix(Salary~., train)
+y.model.mat = model.matrix(Salary~., test)
+y = train$Salary
+lasso.model = glmnet(x.model.mat, y, alpha = 1)
+lasso.preds = predict(lasso.model, s = 0.01, y.model.mat)
+lasso.test.err = mean((lasso.preds - test$Salary)^2)
+plt.err$Lasso_Model = lasso.test.err
+lasso.test.err
+# __Boosted Model__
+plt.err$Boosted_Model = boost.model.test.err
+#The Test MSE for the different methods are shown below. The Boosted model performs the best and achieves the lowest Test MSE among the models.
+# Linear Regression: 0.4917959
+# Lasso Regression: 0.4700537
+# Boosted Model: 0.2515519
+
+
+# __F__ 
+# Boosted model using shrinkage value of 0.01 that gave the lowest test MSE.
+boosted.model = gbm(Salary~., data = train, 
+                              distribution = "gaussian", 
+                              n.trees = 1000, 
+                              shrinkage = lambdas[which.min(test.error)])
+
+summary(boosted.model)
+# CRuns, CAtBat and CHits are the three most important variables.
+
+# __G__
+bag.model = randomForest(Salary~., data = train, 
+                              distribution = "gaussian", 
+                              n.trees = 1000, 
+                              shrinkage = lambdas[which.min(test.error)],
+                              mtry = 19,
+                              importance = TRUE)
+bag.preds = predict(bag.model, test)
+bag.test.err = mean((bag.preds - test$Salary)^2)
+bag.test.err
+# The bagged approach performs the best when comparing each of the models. This approach takes all predictors into account and achieves a Test MSE of 0.2293439 which is slightly lower than the actual boosted test error
+```
+

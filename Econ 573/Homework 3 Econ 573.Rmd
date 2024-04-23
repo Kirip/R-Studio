@@ -1,0 +1,319 @@
+---
+title: "Homework 3 (Econ 573)"
+author: "Jabbir Ahmed"
+date: "2024-02-28"
+output: pdf_document
+---
+PART 1
+__Problem 2__ For parts (a) through (c), indicate which of i. through iv. is correct. Justify your answer.
+
+__A__ The lasso, relative to least squares, is:
+iii. Less fexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance. Since, Lasso Results in some features to have zero coefficients, therefore it will always be less felxible than the least squares. Also, lasso decreases with the variance at a cost of slight increase in bias. 
+
+__B__ Repeat (a) for ridge regression relative to least squares:
+iii. Less fexible and hence will give improved prediction accuracy when its increase in bias is less than its decrease in variance. The reason is the same as (A) because Ridge also decreases the variance at a cost of slight increase in the bias except that every variables has a non-zero coefficient.
+
+__C__ Repeat (a) for non-linear methods relative to least squares:
+ii. More fexible and hence will give improved prediction accuracy when its increase in variance is less than its decrease
+in bias. Non-linear methods are more flexible than least squares which is a linear method. Also, as flexibility increases, variance increases and a lower bias. Hence, predictions will improve if the variance rises less than a decrease in the bias (variance-bias tradeoffs)
+
+__Problem 3__ Suppose we estimate the regression coefcients in a linear regression model by minimizing:
+
+__A__ As we increase s from 0, the training RSS will:
+iv. Steadily decrease. As we increase s, the effect of regularization will decrease. So, we are lifting the restrictions that we imposed on s. The model will behave more as least square and training error will keep on decreasing as we increase s.
+
+__B__ Repeat (a) for test RSS:
+ii. Decrease initially, and then eventually start increasing in a U shape. As we can look from graph (fig. 6.9 in chapter), as we go from right to left, the test error first decreases, reaches a minium and then increases.
+
+__C__ Repeat (a) for variance:
+iii. Steadily increase. As we increase s, the model is fitting the data better and as training error decreases, variances increases. We can also confirm this from graph, as we go from right to left, variance increases.
+
+__D__ Repeat (a) for (squared) bias:
+iv. Steadily decrease. With increase in s, the bias decreases steadily. This can confirmed through the graph, as we go from right to left, the blakc line describing the square of bias is decreasing steadily.
+
+__E__ Repeat (a) for the irreducible error:
+iv. Steadily decrease. Irreducible error, as the name suggests cannot be reduced, and remains constant Independent of the method used for fitting.
+
+__Problem 10__ We have seen that as the number of features used in a model increases, the training error will necessarily decrease, but the test error may not. We will now explore this in a simulated data set.
+```{r}
+library(ISLR)
+library(MASS)
+library(leaps)
+library(glmnet)
+library(pls)
+library(caTools)
+```
+
+```{r}
+# __A__
+# Simulated data set.
+set.seed(1)
+x = matrix(rnorm(1000 * 20), 1000, 20)
+b = rnorm(20)
+b[3] = 0
+b[4] = 0
+b[9] = 0
+b[11] = 0
+b[13] = 0
+b[14] = 0
+b[7] = 0
+b[19] = 0
+
+eps = rnorm(1000)
+y = x %*% b + eps
+# __B__
+# Train and test sets.
+trainid = sample(1:nrow(x), nrow(x)/10)
+X.train = x[-trainid,]
+Y.train = y[-trainid,]
+X.test = x[trainid,]
+Y.test = y[trainid,]
+
+# __C__
+# Best subset selection on training set.
+data.train = data.frame(y = Y.train, x = X.train)
+regfit.full = regsubsets(y ~ ., data = data.train, nvmax = 20)
+train.mat = model.matrix(y ~ ., data = data.train, nvmax = 20)
+val.errors = rep(NA, 20)
+for (i in 1:20) {
+    coefi = coef(regfit.full, id = i)
+    pred = train.mat[, names(coefi)] %*% coefi
+    val.errors[i] = mean((pred - Y.train)^2)
+}
+plot(val.errors, xlab = "Number of predictors", ylab = "Training MSE", pch = 19, type = "b")
+# As expected, training MSE decreases monotonically as the number of variables increase. 
+# Minimum training MSE is at maximum number of variables: `r which.min(train.mse)`.
+
+# __D__
+# For loop to compute test MSE for each best model.
+data.test = data.frame(y = Y.test, x = X.test)
+test.mat = model.matrix(y ~ ., data = data.test, nvmax = 20)
+for (i in 1:20) {
+    coefi = coef(regfit.full, id = i)
+    pred = test.mat[, names(coefi)] %*% coefi
+    val.errors[i] = mean((pred - Y.test)^2)
+}
+plot(val.errors, xlab = "Number of predictors", ylab = "Test MSE", pch = 19, type = "b")
+
+# Test MSE decreases rapidly as the number of variables increase, but the minimum is not at the max number of variables.
+# Minimum test MSE is when number of variables: `r which.min(test.mse)`.
+
+# __E__
+which.min(val.errors)
+# Minimum Test MSE occurs at a model with 12 variables. The test MSE deceases rapidly until it reaches the minimum and then starts to rise thereafter. 
+
+# As the model flexibility increases, it is better able to fit the data set. This results in the Test MSE decreasing rapidly until it reaches a minimum. Thereafter, further increases in model flexibility causes over fitting and hence results in an increase in the Test MSE.
+
+# __F__
+# Coefficients of best model found through subset selection.
+coef(regfit.full, which.min(val.errors))
+# Best model variables exactly capture all non-zero variables from the original model, and their respective coefficients are highly similar.
+
+# __G__
+val.errors = rep(NA, 20)
+x_cols = colnames(x, do.NULL = FALSE, prefix = "x.")
+for (i in 1:20) {
+    coefi = coef(regfit.full, id = i)
+    val.errors[i] = sqrt(sum((b[x_cols %in% names(coefi)] - coefi[names(coefi) %in% x_cols])^2) + sum(b[!(x_cols %in% names(coefi))])^2)
+}
+plot(val.errors, xlab = "Number of coefficients", ylab = "Error between estimated and true coefficients", pch = 19, type = "b")
+
+# We may see that the model with 3 variables minimizes the error between the estimated and true coefficients. However test error is minimized by the model with 12 variables. So, a better fit of true coefficients doesn’t necessarily mean a lower test MSE.
+```
+__Problem 11__ We will now try to predict per capita crime rate in the Boston data set.
+```{r}
+# __A__
+library(MASS)
+data(Boston)
+set.seed(1)
+predict.regsubsets <- function(object, newdata, id, ...) {
+    form <- as.formula(object$call[[2]])
+    mat <- model.matrix(form, newdata)
+    coefi <- coef(object, id = id)
+    xvars <- names(coefi)
+    mat[, xvars] %*% coefi
+}
+
+k = 10
+folds <- sample(1:k, nrow(Boston), replace = TRUE)
+cv.errors <- matrix(NA, k, 13, dimnames = list(NULL, paste(1:13)))
+for (j in 1:k) {
+    best.fit <- regsubsets(crim ~ ., data = Boston[folds != j, ], nvmax = 13)
+    for (i in 1:13) {
+        pred <- predict(best.fit, Boston[folds == j, ], id = i)
+        cv.errors[j, i] <- mean((Boston$crim[folds == j] - pred)^2)
+    }
+}
+mean.cv.errors <- apply(cv.errors, 2, mean)
+plot(mean.cv.errors, type = "b", xlab = "Number of variables", ylab = "CV error")
+min(mean.cv.errors)
+regfit.best = regsubsets(crim~., data=Boston, nvmax=13)
+coef(regfit.best, 12)
+# CV error is lowest for model with 9 variables. The CV error is 42.46014 
+
+# Using Lasso to create a sparse model.
+
+x = model.matrix(crim~.,Boston)[,-1]
+y = Boston$crim
+cv.out = cv.glmnet(x, y, alpha = 1, type.measure = "mse")
+plot(cv.out)
+cv.out
+# Here cross-validation selects a lambda equal to 0.056. We have a CV estimate for the test MSE equal to 42.64.
+
+# Using Ridge Regression.
+cv.out = cv.glmnet(x, y, alpha = 0, type.measure = "mse")
+cv.out
+
+# Lambda chosen by cross validation is 0.54,We have a CV estimate for the test MSE equal to 43.74. so both ridge regression and lasso test mse are similar to that provided by least squares.
+
+# Using PCR
+pcr.fit = pcr(crim ~ ., data = Boston, scale = TRUE, validation = "CV")
+summary(pcr.fit)
+validationplot(pcr.fit, val.type = "MSEP")
+# Here cross-validation selects M to be equal to 14 (so, no dimension reduction). We have a CV estimate for the test MSE equal to 45.693568.
+
+#__B__ & __C__
+# I would choose the Lasso model, as it gives the lowest test mse. 
+# Lasso models are generally more interpret able.
+# It results in a sparse model with 10 variables. Two variables whose effect on the response were below the required threshold were removed.
+  
+```
+
+PART 2
+
+__Problem 4__ When the number of features p is large, there tends to be a deterioration in the performance of KNN and other local approaches that perform prediction using only observations that are near the test observation for which a prediction must be made. This phenomenon is known as the curse of dimensionality, and it ties into the fact that curse of dimensionality non-parametric approaches often perform poorly when p is large. We
+will now investigate this curse.
+
+__A__  On average, what fraction of the available observations will we use to make the prediction?
+In a uniform distribution, all intervals of the same length are equally probable. Assuming x (E) in[0.05, 0.95], then intervals: [x-0.05, x+0.05], so length=0.1. On average 10% of the observations would be available to make a prediction for the test observation.
+
+__B__  On average, what fraction of the available observations will we use to make the prediction?
+Assuming x (E) in[0.05, 0.95], x1_{length} * x2_{length} = 0.01. Therefore, 1% of the available observations would be used to make a prediction.   
+
+__C__ What fraction of the available observations will we use to make the prediction?
+When p=100; 0.1^p* 100 = 0.1^{100}* 100 of the observations are available
+
+__D__ Using your answers to parts (a)–(c), argue that a drawback of KNN when p is large is that there are very few training observations “near” any given test observation
+As the number of predictors increase, the fraction of observations available to make a prediction is reduced exponentially.
+
+__E__ Now suppose that we wish to make a prediction for a test observation by creating a p-dimensional hypercube centered around the test observation that contains, on average, 10 % of the training observations. For p = 1, 2, and 100, what is the length of each side of the hypercube? Comment on your answer.
+    If p=1 ; d(length) = 0.1^{1/1} = 0.1
+    If p=2 ; d(length) = 0.1^{1/2} = 0.32
+    If p=100 ; d(length) = 0.1^{1/100} = 0.977
+As p increases the side length converges to 1, and this shows that the hypercube centered around the test observation with 10% of the test observation needs to be nearly the same size as the hypercube with all the observations. It also shows that observations are 'further' from a test observation as p increases; that is they are concentrated near the boundary of the hypercube.
+
+__Problem 8__ Suppose that we take a data set, divide it into equally-sized training and test sets, and then try out two diferent classifcation procedures. First we use logistic regression and get an error rate of 20 % on the training data and 30 % on the test data. Next we use 1-nearest neighbors (i.e. K = 1) and get an average error rate (averaged over both test and training data sets) of 18 %. Based on these results, which method should we prefer to use for classifcation of new observations? Why?
+The KNN with K=1 model would fit the training set exactly and so the training error would be zero. This means the test error has to be 36% in order for the average of the errors to be 18%. As model selection is based on performance on the test set, we will choose logistic regression to classify new observations.
+
+__Problem 11__ Work out the detailed forms of ak, bkj , and bkjl in (4.33). Your answer should involve pik,piK, muk, muK, Summationk, and SummationK
+Answer in the Pictures
+
+__Problem 12__ Suppose that you wish to classify an observation X in R into apples and oranges. You ft a logistic regression model and find that Your friend fts a logistic regression model to the same data using the softmax formulation in (4.13), and fnds that 
+Answer in the Pictures
+
+__Problem 13__ This question should be answered using the Weekly data set, which is part of the ISLR2 package. This data is similar in nature to the Smarket data from this chapter’s lab, except that it contains 1, 089 weekly returns for 21 years, from the beginning of 1990 to the end of 2010
+```{r}
+library(tidyverse)
+library(openintro)
+library(ISLR2)
+library(MASS)
+library(class)
+library(e1071)
+
+# __A__
+summary(Weekly)
+pairs(Weekly)
+cor(Weekly[ ,-9])
+# Based on the above scatter plot and matrix, there appears to be a positive correlation between the Year and Volume variables.
+
+# __B__
+mod1 = glm(Direction~Lag1+Lag2+Lag3+Lag4+Lag5+Volume, data = Weekly, family = binomial)
+summary(mod1)
+# The only Lag that shows significance is Lag 2 because it is positive, but it isn't that impactful/significant in the overall model.
+
+# __C__
+glmprob.wk = predict(mod1, type = "response") # probability of the market response
+glmpred.wk = rep("Down", length(glmprob.wk)) # making all the market type be called down
+glmpred.wk[glmprob.wk >0.5] <- 'Up' # all those above are being called 0.5 are up
+table(glmpred.wk, Weekly$Direction) # we get our table Confusion matrix, which is a  table used to describe the performance of a classification model on a set of test data hence in this case which days are up and which days are down predicted correctly or incorrectly. Up and Up match true Positive, Down and Down match true negative
+mean(glmpred.wk == Weekly$Direction) # Number that are correctly predicted
+# Our model correctly predicted that the market would go up on 557 days and that it would go down on 54 days. So, our model is telling us that about 56.11% of the responses in the market are correctly predicted.
+
+# __D__
+train=(Weekly$Year<2009)
+weekly09=Weekly[!train ,]
+direction09=Weekly$Direction[!train]
+glm_fit=glm(Direction~Lag2, data = Weekly,family=binomial ,subset=train)
+glm_probability=predict (glm_fit,weekly09, type="response")
+glm_prediction=rep("Down",104)
+glm_prediction[glm_probability >.5]=" Up"
+table(glm_prediction ,direction09)
+# Our model indicates that we correctly predicted that the market would go up on 56 days and down on 9 days. This means that 62.5% of the time our model is predicting the response of the market correctly.
+
+# __E__
+ldafit=lda(Direction~Lag2 ,data = Weekly ,subset=train)
+ldafit
+lda.prediction=predict(ldafit , weekly09)
+ldaclass=lda.prediction$class
+table(ldaclass , direction09)
+# The probability for down is 0.4477157 and the probability for down is 0.5522843. The model tells up that we correctly predicted the market would go up on 56 days and down on 9 days; which are the same results as in part (d). So, using the LDA method created the same results.
+
+# __F__
+weeklyqda=qda(Direction~Lag2 ,data=Weekly ,subset=train)
+weeklyqda
+classqda=predict(weeklyqda ,weekly09)$class
+table(classqda ,direction09)
+# We can see that the probability of groups for down is 0.4477157 and the probability for up is 0.5522843. Which is the same as the lda process. However, in this model we correctly predicted the market would go up on 61 days and down on 0 days. This means that using the qda model, our predictions were correct 58.65% of the time.
+
+# __G__
+trainX=cbind(Weekly$Lag2)[train ,]
+testX=cbind(Weekly$Lag2)[!train ,]
+direction.train =Weekly$Direction [train]
+dim(trainX)= c(985,1)
+dim(testX)=c(104,1)
+set.seed(1)
+knnprediction=knn(trainX,testX,direction.train ,k=1)
+table(knnprediction ,direction09)
+# We can see that in this model we correctly predicted the market would go up on 31 days and down on 21 days. This means that using our knn model, our predictions were correct 50% of the time.
+
+# __H__
+nbay<-naiveBayes(Direction~Lag2, data = Weekly, subset = train)
+nbay.class = predict(nbay, weekly09)
+table(nbay.class, direction09)
+# Once again, the probability for down is 0.4477157 and the probability for up is 0.5522843. We can see that in this model we correctly predicted the market would go up on 61 days and down on 0 days. This means that using the naive bayes model, our predictions were correct 58.65% (61/(61+43)) of the time; which is the same as the qda model.
+
+# __I__
+# the regression model predicted the market correctly 62.5% of the time which is the highest out of all the models, so that method appears to provide the best results.
+
+# __J__
+mod2=glm(Direction~Lag2:Lag3, data = Weekly,family=binomial ,subset=train)
+glmprob2=predict (glm_fit,weekly09, type="response")
+glmpred2=rep("Down",104)
+glmpred2[glmprob2 >.5]=" Up"
+table(glmpred2 ,direction09)
+# When using the glm model to compare the relationship between Lag 2 and Lag 3, we see that the glm model correctly predicted the market would go up on 56 days and down on 9 days. This means that our predictions were correct 62.5% of the time.
+
+lda2 = lda(Direction~Lag2^2, data = Weekly, subset = train)
+ldapred2 = predict(lda2, weekly09)
+lda2class = ldapred2$class
+table(lda2class, direction09)
+# When using the glm model to compare the relationship between Lag 2 and Lag 3, we see that the glm model correctly predicted the market would go up on 56 days and down on 9 days. This means that our predictions were correct 62.5% of the time.
+
+qda2 = qda(Direction~Lag2:Lag3, data = Weekly, subset = train)
+classqda2 = predict(qda2, weekly09)$class
+table(classqda2,direction09)
+# When using the qda model to compare the relationship between Lag 2 and Lag 3, we see that the qda model correctly predicted the market would go up on 53 days and down on 6 days. This means that our predictions were correct 56.73% of the time.
+
+Xtrain2=cbind(Weekly$Lag2)[train ,]
+Xtest2=cbind(Weekly$Lag2)[!train ,]
+Directiontrain2 =Weekly$Direction [train]
+dim(Xtrain2)= c(985,1)
+dim(Xtest2)=c(104,1)
+set.seed(1)
+knn3=knn(Xtrain2,Xtest2,Directiontrain2 ,k=25)
+table(knn3 ,direction09)
+# When setting K=25, we see that the qda model correctly predicted the market would go up on 36 days and down on 19 days. This means that our predictions were correct 52.88% of the time.
+
+```
+
+

@@ -1,0 +1,404 @@
+---
+title: "Homework 2"
+author: "Jabbir Ahmed"
+date: "2024-02-08"
+output:
+  word_document: default
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+Part 1:
+___Problem 1___
+Describe the null hypotheses to which the p-values given in Table 3.4 correspond. Explain what conclusions you can draw based on these p-values. Your explanation should be phrased in terms of sales, TV, radio, and newspaper, rather than in terms of the coefcients of the linear model.
+__a__: P-value is the probability that the give result is true, considering the null hypothesis. If the p-value is less, we say that the p-value is significant and we reject the null hypothesis. In a given linear model, null hypothesis is that there is no relationship between a predictor and response, and there is low or significant p means we reject the null and that there is relationship between the predictor and response.
+__b__: In the given table (table 3.4), the p value of TV, radio, and newspaper are <0.001, <0.001, and 0.8599. The p-values for TV and Radio are significant, so their null hypothesis can be rejected. It shows a strong likelihood that TV and Radio advert spending impacts sales. However,  the p-value for Newspaper is not significant and so cannot reject the null hypothesis. This shows that newspaper spending does not increase sales in the presence of TV and Radio spending. 
+
+___Problem 3___
+Suppose we have a data set with fve predictors, X1 = GPA, X2 =
+IQ, X3 = Level (1 for College and 0 for High School), X4 = Interaction between GPA and IQ, and X5 = Interaction between GPA and Level. The response is starting salary after graduation (in thousands of dollars). Suppose we use least squares to ft the model, and get β0 = 50, β1 = 20, β2 = 0.07, β3 = 35, β4 = 0.01, β5 = −10.
+__a__: (iii) is True; As males earn more on average than females after their GPA exceeds 3.5.
+__b__: 137.1k salary of a female
+```{r}
+Iq = 110
+Gpa = 4
+Gen = 1
+Sales = 50 +20*Gpa +.07*Iq + 35*Gen +.01*(Gpa*Iq)-10*(Gpa*Gen)
+Sales
+```
+__c__: False, In the case of the female with an IQ of 110 and a GPA of 4.0, the interaction term adds 17.6k to her final salary, and this represents around 15% of her final salary, therefore the impact of the interaction term is substantial but we have calculate the p-value of the coefficient to determine if it is statistically significant.
+
+___Problem 4___
+I collect a set of data (n = 100 observations) containing a  single predictor and a quantitative response. I then ft a linear regression model to the data, as well as a separate cubic regression, i.e. Y = β0 + β1(X) + β2(X2) + β3(X3) + E
+__a__: For training data, RSS decreases as we increase model complexity. The extra polynomial terms allow for a closer fit (more degrees of freedom) of the training data, so I would expect the training RSS for cubic regression to be lower than for simple linear regression.
+__b__: In the case of test data, for cubic regression which is overfitted, will produce results far from the true values, where as linear regression, which is close to the true function will preform betweer on the test data. Hence, RSS will be lower on the test data for linear regression.
+__c__: Cubic regression will have a better fit to non-linear data and so its training RSS will be lower
+__d__: We can't predict wheter RSS for test data will be lower for cubic regression or linear regression, since we have no clue what the true function is like. However, we can find out the value of RSS for test data for cubic regression and linear regression, if test RSS of cubic is less than test RSS of linear regression, than we can say that true relatiionship is more non-linear.
+
+Part 2:
+__8__:
+```{r}
+# Part a
+library(ISLR)
+fix(Auto)
+data(Auto)
+mpg_pwr = lm(mpg~horsepower, data = Auto)
+summary(mpg_pwr)
+# (i)There is strong evidence of a relationship between mpg and horsepower as the p-value for horsepower's coefficient is close to zero.
+
+
+# (ii) The R^2 statistic is 0.61, and this means 60% of variance in mpg can be explained by horsepower in this model. To calculate the residual error relative to the response we use the mean of mpg and the RSE. The relationship between mpg and horsepower is reasonably strong.
+
+
+# (iii) MPG has a negative linear relationship with horsepower. For every unit increase in horsepower, the mpg falls by -0.1578mpg.
+
+# (iv) y = 39.935 - (0.158 x 98) = 24.45mpg, we are getting the answer as 24.46 ,but we can't be sure about the confidence in the prediction and the resulting range of the confidence
+predict(mpg_pwr, data.frame(horsepower = c(98)), interval = 'prediction')
+predict(mpg_pwr, data.frame(horsepower = c(98)), interval = 'confidence')
+
+# Part B
+plot(mpg~horsepower,main= "Scatter plot of mpg vs. horsepower", data=Auto)
+abline(mpg_pwr, lwd =3, col ="light blue")
+
+# Part C
+#The residuals v fitted chart shows a slight u-shaped pattern, and this indicates non-linearity in the data.
+#The residuals v leverage chart shows that some observations have high leverage.
+#The scale-location chart shows some possible outliers. We can confirm by using studentized residuals to find observations with values greater than 3:
+par(mfrow=c(2,2))
+plot(mpg_pwr)
+print(rstudent(mpg_pwr)[which(rstudent(mpg_pwr)>3)])
+
+```
+
+__9__:
+```{r}
+# Part A
+head(Auto)
+pairs(Auto[,1:8])
+
+# Part B
+cor(Auto[,1:8])
+
+# Part C
+mpg_all<- lm(mpg~.-name, data = Auto)
+summary(mpg_all)
+
+# Part D
+# The Residuals v Fitted values chart indicates some non-linearity in the data, and so polynomial regression could provide a better fit than simple linear regression.
+# The standardized residuals vs leverage chart shows that observation 14 has high leverage.
+# Some observations are potential outliers: 
+par(mfrow=c(2,2))
+plot(mpg_all)
+rstudent(mpg_all)[which(rstudent(mpg_all)>3)]
+# Additionally, we can check for collinearity between the predictors by finding `VIF` values. The results show some variables with VIF higher than 5 or 10, which according to the text is problematic. Collinearity increases inaccuracy in the estimate for predictors coefficients, and hence increases their standard errors.
+library(car)
+vif(mpg_all)
+
+# Part E
+# cylinders:year and horsepower:acceleration are statistically significant. The $R^2$ metric has increased from 0.82 to 0.85.
+
+mpg_interaction = lm(mpg~.-name+ year:cylinders+ acceleration:horsepower, data=Auto)
+summary(mpg_interaction)
+
+# Part F
+# Both mpg_poly and mpg_poly2 models see an increase in $R^2$ metric from 0.82 to 0.86. There are differences in the statistical significance of some predictors between the transformed models and the multiple regression model in part C.
+
+mpg_poly = lm(mpg~.-name + year:cylinders + I(horsepower^2)
++ I(acceleration^2),data=Auto)
+summary(mpg_poly)
+mpg_poly2 = lm(mpg~.-name-cylinders + log(weight) + log(acceleration) +
+sqrt(displacement),data=Auto)
+summary(mpg_poly2)
+```
+
+__13__:
+```{r}
+set.seed(1)
+# Part A
+x = rnorm(100, mean = 0, sd=1)
+
+# Part B
+eps = rnorm(100, mean = 0, sd=0.25)
+
+# Part C
+y = -1 +(0.5*x)+eps
+# Length of y=100, beta0=-1, beta1=0.5
+
+# Part D
+plot(y~x, main="Scatter plot of x vs y", col='red')
+
+# Part E
+lm.fit = lm(y~x)
+summary(lm.fit)
+abline(lm.fit, lwd = 1, col='cyan')
+
+# Part F
+#A positive linear relationship exists between x2 and y2, with added variance introduced by the error terms.
+#beta_0 = -1.018$ and beta_1 = 0.499$.The regression estimates are very close to the true values: beta_0=-1, beta_1=0.5. This is further confirmed by the fact that the regression and population lines are very close to each other. P-values are near zero and F-statistic is large so null hypothesis can be rejected.
+abline(a = -1, b=0.5,lwd = 1, col='black')
+legend('bottomright',bty ='n', legend=c("Least Squares Line", "Population Line"),col=c('cyan','black'), lty = c(1,1))
+
+# Part G
+# The quadratic term does not improve the model fit. The F-statistic is reduced, and the p-value for the squared term is higher than 0.05 and shows that it isn't statistically significant.
+lm.fit2 = lm(y~x+I(x^2))
+summary(lm.fit2)
+
+# Part H
+# The points are closer to each other, the RSE is lower, R2 and F-statistic are much higher than with variance of 0.25. The linear regression and population lines are very close to each other as noise is reduced, and the relationship is much more linear.
+
+eps = rnorm(100, mean = 0, sd=sqrt(0.01))
+y = -1+(0.5*x)+eps
+
+plot(y~x, main='Reduced Noise', col='black')
+lm.fit2 = lm(y~x)
+summary(lm.fit2)
+abline(lm.fit2, lwd=1, col ="red")
+
+abline(a=-1,b=0.5, lwd=1, col="pink")
+legend('bottomright', bty='n', legend=c('Least Squares Line', 'Population Line'), col=c('pink','red'), lty = c(1, 1))
+
+# Part I
+# The points are more spread out and so the relationship is less linear. The RSE is higher, the R2 and F-statistic are lower than with variance of 0.25.
+eps = rnorm(100, mean=0, sd=sqrt(0.5625))
+y = -1 +(0.5*x) + eps
+
+plot(y~x, main='Increased Noise', col='light blue')
+lm.fit4 = lm(y~x)
+summary(lm.fit4)
+abline(lm.fit4, lwd=1, col ="blue")
+
+abline(a=-1,b=0.5, lwd=1, col="red")
+legend('bottomright', bty='n', legend=c('Least Squares Line', 'Population Line'), col=c('blue','red'), lty = c(1, 1))
+
+# Part J
+# Confidence interval values are narrowest for the lowest variance model, widest for the highest variance model and in-between these two for the original model.
+confint(lm.fit) 
+confint(lm.fit2)
+confint(lm.fit4)
+
+```
+
+__15__:
+```{r}
+library(MASS)
+
+# Part A
+# from above point, we can conclude that every predictor except CHAS, has a significant relation with CRIM
+data <- Boston
+print(dim(data))
+head(data)
+simple_coeff <- list()
+predictor <- setdiff(names(data), 'crim')
+for (col in predictor) {
+  formula <- as.formula(paste('crim ~', col))
+  result <- lm(formula, data = data)
+  coeff <- summary(result)$coefficients
+  pvalue <- summary(result)$coefficients
+  cat(sprintf('%s    %.4f    %.4f\n', col, coeff, pvalue))
+  simple_coeff[[col]] <- coeff
+  plot(data[[col]], data$crim, main = paste('crim vs', col), xlab = col, ylab = 'crim')
+  abline(result, col = "yellow")}
+# Another Way
+attach(Boston)
+lm.zn = lm(crim~zn)
+summary(lm.zn) # yes
+lm.medv = lm(crim~medv)
+lm.lstat = lm(crim~lstat)
+lm.black = lm(crim~black)
+lm.ptratio = lm(crim~ptratio)
+lm.tax = lm(crim~tax)
+lm.rad = lm(crim~rad)
+lm.dis = lm(crim~dis)
+lm.age = lm(crim~age)
+lm.rm = lm(crim~rm)
+lm.nox = lm(crim~nox)
+lm.chas = lm(crim~chas) 
+lm.indus = lm(crim~indus)
+
+# Part B
+# although the coeff are all non zero, but inspecting the p values, we can only reject null hypothesis of ZN,Black,MedV, RAD, and DIS
+lm.all = lm(crim~., data=Boston)
+summary(lm.all)
+
+# Part C
+# Coefficient for nox is approximately -10 in univariate model and 31 multiple regression model
+x = c(coefficients(lm.zn)[2],
+      coefficients(lm.indus)[2],
+      coefficients(lm.chas)[2],
+      coefficients(lm.nox)[2],
+      coefficients(lm.rm)[2],
+      coefficients(lm.age)[2],
+      coefficients(lm.dis)[2],
+      coefficients(lm.rad)[2],
+      coefficients(lm.tax)[2],
+      coefficients(lm.ptratio)[2],
+      coefficients(lm.black)[2],
+      coefficients(lm.lstat)[2],
+      coefficients(lm.medv)[2])
+y = coefficients(lm.all)[2:14]
+plot(x, y)
+
+# Part D
+# there is evidence of non-linear association between all of the predictors and the response, except for black and chas
+# You could do the summary(lm.all) of them but I didn't want to output too much data so I left them out.
+lm.zn = lm(crim~poly(zn,3))
+# summary(lm.zn)
+lm.indus = lm(crim~poly(indus,3))
+# summary(lm.indus)
+# lm.chas = lm(crim~poly(chas,3)) : qualitative predictor
+lm.nox = lm(crim~poly(nox,3))
+# summary(lm.nox)
+lm.rm = lm(crim~poly(rm,3))
+# summary(lm.rm)
+lm.age = lm(crim~poly(age,3))
+# summary(lm.age)
+lm.dis = lm(crim~poly(dis,3))
+# summary(lm.dis)
+lm.rad = lm(crim~poly(rad,3))
+# summary(lm.rad)
+lm.tax = lm(crim~poly(tax,3))
+# summary(lm.tax)
+lm.ptratio = lm(crim~poly(ptratio,3))
+# summary(lm.crim)
+lm.black = lm(crim~poly(black,3))
+# summary(lm.black)
+lm.lstat = lm(crim~poly(lstat,3))
+# summary(lm.lstat)
+lm.medv = lm(crim~poly(medv,3))
+# summary(lm.medv)
+```
+
+Part 3
+```{r}
+library(stats)
+library(ggplot2)
+homes <- read.csv("homes2004.csv")
+
+# conditional vs marginal value
+par(mfrow=c(1,2)) # 1 row, 2 columns of plots 
+hist(homes$VALUE, col="Aquamarine", xlab="home value", main="")
+plot(VALUE ~ factor(BATHS), 
+    col=rainbow(8), data=homes[homes$BATHS<8,],
+    xlab="number of bathrooms", ylab="home value")
+
+# create a var for downpayment being greater than 20%
+homes$gt20dwn <- 
+	factor(0.2<(homes$LPRICE-homes$AMMORT)/homes$LPRICE)
+# omit the datas that are do not appear
+homes$STATE <- factor(homes$STATE)
+homes$FRSTHO<- factor(homes$FRSTHO)
+homes <- na.omit(homes)
+# some quick plots.  Do more to build your intuition!
+par(mfrow=c(1,2)) 
+plot(VALUE ~ STATE, data=homes, 
+	col=rainbow(nlevels(homes$STATE)), 
+	ylim=c(0,10^6), cex.axis=.65)
+plot(gt20dwn ~ FRSTHO, data=homes, 
+	col=c(1,3), xlab="Buyer's First Home?", 
+	ylab="Greater than 20% down")
+
+## My own model using ggplot: relationship between household income (assuming 'ZINC2') and log home value (assuming 'LPRICE')
+ggplot(homes, aes(x = ZINC2, y = LPRICE)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "purple") +
+  labs(title = "Square Footage vs. Log Home Value", x = "Square Footage", y = "Log Home Value")
+
+
+## Q2 
+# "ECOM1Y"  "EGREENY" "ELOW1Y"  "ETRANSY" "ODORAY" are coefficients that are jointly significant above 10%. Also, for less than or equal to 10% it is a long list that is provided under names(pvals)[pvals<=.1]
+# regress log(VALUE) on everything except AMMORT and LPRICE 
+pricey <- glm(log(VALUE) ~ .-AMMORT-LPRICE, data=homes)
+pvals <- summary(pricey)$coef[-1,4]
+names(pvals)[pvals<=.1]
+# To calculate those above 10%
+names(pvals)[pvals>.1]
+
+## Q3: 
+#1st home buyers has a negative affect ( -0.3027506) on the down payment of less than or equal to 20%. The number of bathroom has a positive effect (0.4238279 ) on the response variable. However, we can reject the null hypothesis for both of these predictors, meaning 1st home buyers and bathroom have an impact on home price with down payment less than or equal to 20%
+#The interaction between 1st home buyer and bathrooms have a negative affect (-0.3370586) on the response variable and they have a p-value (2.26e-08) that we use to reject the null hypothesis. It means that the interaction term has a negative relationship and impacts home value with down payment less than or equal to 20%
+model3 <- glm(gt20dwn ~ FRSTHO + BATHS + FRSTHO*BATHS - AMMORT - LPRICE, 
+              family=binomial(link = "logit"), data=homes)
+summary(model3)
+cat("Effect of 1st-time buyer:", coef(model3)['FRSTHOY'], "\n")
+cat("Effect of # of bathrooms:", coef(model3)['BATHS'], "\n")
+interaction_term_name <- paste("FRSTHOY", "BATHS", sep=":")
+cat("Interaction effect:", coef(model3)[interaction_term_name], "\n")
+
+## Q4
+# we can see that utilizing the predictive model and the actual model leads to a weaker relationship with the r-squared being 0.244429173849128, It means that the model is weak and should not be used as a predictive power or it is missing key variables to help elevate the r-squared and increase the relationship between the Independent Var and Dependent Var.
+gt100 <- which(homes$VALUE>100000)
+# ybar and null deviance
+source("deviance.R")
+model3 <- glm(gt20dwn ~ . - AMMORT - LPRICE, data = homes[gt100, ], family = binomial())
+pred <- predict(model3, homes[gt100, ], type = "response")
+ybar <- mean(homes$gt20dwn[-gt100]==TRUE)
+D0 <- deviance(y=homes$gt20dwn, pred=rep(ybar, length(-gt100)), family="binomial")
+D_train <- deviance(y = homes$gt20dwn[-gt100], pred = pred, family = "binomial")
+print(paste("Training sample deviance:", D_train))
+print(paste("Null deviance:", D0))
+R_squared <- 1 - (D_train / D0)
+print(paste("Pseudo R-squared:", R_squared))
+```
+
+
+```{r}
+# My Version at first The STATER did not work
+# Part A
+library(ggplot2)
+library(readr)
+library(stats)
+homes <- read_csv("homes2004.csv")
+
+# For example, relationship between household income (assuming 'ZINC2') and log home value (assuming 'LPRICE')
+ggplot(homes, aes(x = ZINC2, y = LPRICE)) +
+  geom_point() +
+  geom_smooth(method = "lm", se = FALSE, color = "cyan") +
+  labs(title = "Square Footage vs. Log Home Value", x = "Square Footage", y = "Log Home Value")
+
+# Part B
+# "ECOM1Y"  "EGREENY" "ELOW1Y"  "ETRANSY" "ODORAY" are coefficients that are jointly significant above 10%
+# For less than or equal to 10% it is a long list that is provided under names(pvals)[pvals<=.1]
+model1 <- lm(log(VALUE) ~ . - AMMORT - LPRICE, data = homes)
+summary(model1)
+pvals <- summary(model1)$coef[-1,4]
+# example: those variable insignificant at alpha=0.10
+names(pvals)[pvals>.1]
+names(pvals)[pvals<=.1]
+
+model1_reduced <- stepAIC(model1, direction = "backward")
+summary(model1_reduced)
+# Compare R-squared values
+cat("Full model R-squared: ", summary(model1)$r.squared, "\n")
+cat("Reduced model R-squared: ", summary(model1_reduced)$r.squared, "\n")
+
+# Part C
+# 1st home buyers has a negative affect on the down payment of less than or equal to 20%. The number of bathroom has a positive effect on the response variable. However, we can reject the null hypothesis for both of these predictors, meaning 1st home buyers and bathroom have an impact on home price with down payment less than or equal to 20%
+homes$gt20dwn <- (homes$LPRICE - homes$AMMORT) / homes$LPRICE > 0.2
+model2 <- glm(gt20dwn ~ . - AMMORT - LPRICE, family = binomial, data = homes)
+summary(model2)
+# The interaction between 1st home buyer and bathrooms have a p-value (2.26e-08) that we use to reject the null hypothesis. It means that the interaction term has a negative relationship and impacts home value with down payment less than or equal to 20%
+model2_interaction <- glm(gt20dwn ~ FRSTHO + BATHS + FRSTHO:BATHS - AMMORT - LPRICE, family = binomial, data = homes)
+summary(model2_interaction)
+
+# Part D
+# Using (ii) we can see that the Gt 100k R-squared and Lt R-squared have a weak relationship with home values with gt20dwn.Meaning that the model, as specified, does not have a strong predictive power or that important variables may be missing or incorrectly modeled. Essentially, it implies that the Gt 100k and Lt 100k do not have a strong linear relationship with the gt20dwn.
+# Using (iii) we can see that utilizing the predictive model and the actual model leads to a weaker relationship with the r-squared being 0.03347367, It means that the model is weak and should not be used as a predictive power or it is missing key variables to help elevate the r-squared and increase the relationship between the Indpendent Var and Dependent Var.
+
+homes_gt100k <- subset(homes, VALUE > 100000)
+homes_lt100k <- subset(homes, VALUE <= 100000)
+model3 <- glm(gt20dwn ~ . - AMMORT - LPRICE, family = binomial(link = "logit"), data = homes_gt100k)
+summary(model3)
+
+# (ii) to compare the model I had to create a new regression of lm instead of glm which doesn't give the necessary r-squared for the models.
+model3.5 <- lm(gt20dwn ~ . - AMMORT - LPRICE, family = binomial(link = "logit"), data = homes_gt100k)
+model4 <- lm(gt20dwn ~ . - AMMORT - LPRICE, family = binomial(link = "logit"), data = homes_lt100k)
+cat("Gt 100k R-squred: ", summary(model3.5)$r.squared, "\n")
+cat("Lt 100k R-squared: ", summary(model4)$r.squared, "\n")
+
+# (iii) R-Squared with GLM regression combined and use the predictive model from model3 to create a combined model that allows us to see the R-Squared.
+predictions_lt100k <- predict(model3, newdata = homes_lt100k, type = "response")
+R2_lt100k <- R2(homes_lt100k$gt20dwn, predictions_lt100k, family="binomial")
+print(R2_lt100k)
+
+```
+
