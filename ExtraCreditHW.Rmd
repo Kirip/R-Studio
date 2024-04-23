@@ -1,0 +1,225 @@
+---
+title: 'STOR 455 Extra Credit HW. Due 12/05 11:55pm. Submit through Sakai Assignments.'
+output:
+  pdf_document: default
+  html_notebook: default
+  html_document:
+    df_print: paged
+  word_document: default
+---
+
+
+```{r}
+library(Stat2Data)
+```
+
+```{r}
+# Chapter 1 Exercises
+# 3, 27
+
+# 3: 0.467 because the other term is the constant
+
+# 27: 
+
+  # a: negative sloping, curved (not linear)
+data("Volts", package = "Stat2Data")
+plot(Voltage~Time, data = Volts)
+
+  # b: it does a very good job at fitting the data
+mod1 <- lm(Voltage~Time, data = Volts)
+plot(mod1,1)
+
+  # c: it's a perfectly straight line
+plot(log(Voltage)~Time, data = Volts)
+
+  # d: 2.189945 * -2.059065(time)
+mod2 <- lm(log(Voltage)~Time, data = Volts)
+coef(mod2)
+
+  # e: curved pattern
+plot(mod2, 1)
+```
+
+```{r}
+# Chapter 2 Exercises
+# 15, 17, 23
+data("Cereal", package = "Stat2Data")
+
+# 15a
+  # H0: sugar has linear relationship with calories
+  # HA: sugar does not have linear relationship with calories
+mod3 <- lm(Sugar~Calories, data = Cereal)
+summary(mod3)
+  # test statistic: 3.507, p value: .0013
+  # Reject null hypothesis, sugar does not have linear relationship with calories.
+
+# 15b: (0.04502686, 0.1691271) this slope coefficient says that there is a positive slope, and with one unit increase in the variable, it increases by the amount in the coefficient.
+confint(mod3, level = .95)
+
+#23
+data("USstamps")
+USstamps <- USstamps[-c(1,2, 3, 4), ]
+#a
+model23 <- lm(Price ~ Year, data = USstamps)
+rsquared <- summary(model)$r.squared
+percent_explained <- rsquared * 100
+print(paste("Percentage of variation explained by Year:", round(percent_explained, 2), "%"))
+#b reject the Null
+p_value <- summary(model23)$coefficients[2, "Pr(>|t|)"]
+if (p_value < 0.05) {
+  print("There is a significant linear association between Price and Year.")
+} else {
+  print("There is no significant linear association between Price and Year.")
+}
+#c
+anova_table <- anova(model)
+print(anova_table)
+```
+
+```{r}
+# Chapter 3 Exercises
+# 21, 29
+
+# 21: a) .871
+data("MathEnrollment", package = "Stat2Data")
+Math2 <- subset(MathEnrollment, AYear != 2003)
+mod4 <- lm(Spring~Fall + AYear, data = Math2)
+summary(mod4)
+
+# 21: b) 17.37 on 7 degrees of freedom
+# 21: c) The f-value of 20.852 for AYear and 26.423 for Fall and their accompanying low p-value together signify high statistical significance in explaining variability. 
+anova(mod4)
+
+# 21: d)
+coef(mod4)
+
+# 29
+# a)
+data("Jurors", package = "Stat2Data")
+plot(PctReport~Period, data = Jurors, col = Year)
+
+# b) Due to the low p-value, there is a linear correlation between PctReport and Period, however there is a very vlow R^2 value.
+mod4 <- lm(PctReport~Period, data = Jurors)
+summary(mod4)
+```
+
+```{r}
+# Chapter 4 Exercises
+# 13, 15
+
+# 13: The 117.85 is the intercept, or in this scenario, let's suppose it was possible to have a person with no race, then the predicted weight would be 117.85 oz.
+  # The -7.31 for black means that babies born to black mothers weigh 110.54 oz.
+  # The .65 for hispanic means that babies born to hispanic mothers are predicted to weigh 118.65 oz.
+  # The -.73 for other means that babies of all other races are predicted to weigh 117.12 oz.
+
+# 15:
+data("Blood1", package = "Stat2Data")
+mod5 <- lm(SystolicBP~Overwt, data = Blood1)
+
+Blood1$Normal <- ifelse(Blood1$Overwt == 0, 1, 0)
+Blood1$Overweight <- ifelse(Blood1$Overwt == 1, 1, 0)
+
+mod6 <- lm(SystolicBP~Normal + Overweight, data = Blood1)
+
+summary(mod5)
+summary(mod6)
+```
+
+```{r}
+# Chapter 5 Exercises
+# 27, 37
+
+# 27: a) We found through the boxplot that Mixed and Plus have higher contact that Minus.
+data("MouseBrain", package = "Stat2Data")
+
+mixed <- subset(MouseBrain, Genotype == "Mixed")
+minus <- subset(MouseBrain, Genotype == "Minus")
+plus <- subset(MouseBrain, Genotype == "Plus")
+
+boxplot(mixed$Contacts, minus$Contacts, plus$Contacts)
+
+mean(MouseBrain$Contacts)
+median(MouseBrain$Contacts)
+sum(MouseBrain$Sex == "M")
+sum(MouseBrain$Sex == "F")
+sum(MouseBrain$Genotype == "Mixed")
+sum(MouseBrain$Genotype == "Plus")
+sum(MouseBrain$Genotype == "Minus")
+
+# 27 b) Just through looking at the zero mean condition for ANOVA, I can see that the conditions for ANOVA are not met due to the mean being 19.26316
+mean(mixed$Contacts)
+
+# 37: Due to the low p-value, it is safe to assume that there is a significant difference in the mean number of contacts based on mouse genotype.
+summary(aov(Contacts~Genotype, data = MouseBrain))
+
+```
+
+```{r}
+# Chapter 8 Exercises
+# 3, 55
+
+library(car)
+# 3 Fail to reject
+data("NCbirths", package = "Stat2Data")
+# Perform Levene's test
+levene_test_result <- leveneTest(BirthWeightOz ~ MomRace, data = NCbirths)
+
+# View the results
+print(levene_test_result)
+
+#55
+#a size,type, and interaction are significant
+data("AutoPollution")
+str(autoPollution)
+model_anova <- aov(Noise ~ Size+ Side+Size:Side, data = AutoPollution)
+summary(model_anova)
+#b 
+AutoPollution$Size_Small <- ifelse(AutoPollution$Size == "Small", 1, 0)
+AutoPollution$Size_Medium <- ifelse(AutoPollution$Size == "Medium", 1, 0)
+AutoPollution$Side_New <- ifelse(AutoPollution$Side == "New", 1, 0)
+model_regression <- lm(Noise~ Size_Small + Size_Medium +Side_New + Size_Small:Side_New + Size_Medium:Side_New, data = AutoPollution)
+summary(model_regression)
+
+#c Medium and small cars are significantly different from large cars in terms of noise. Filter type is not significant for large cars or small cars but it is significant for medium cars
+#d
+coefficients_regression <- coef(model_regression)
+
+
+```
+
+```{r}
+# Chapter 9 Exercises
+# 21, 33
+
+# 21
+# a)
+exp(-2.086 + .5117*6)
+# b)
+exp(-2.086 + .5517*6) / (1 + exp(-2.086 + .5517*6))
+# c)
+exp(-2.086 + .5117*7) - exp(-2.086 + .5117*6)
+# d)
+exp(-2.086 + .5517*7) / (1 + exp(-2.086 + .5517*7))
+
+#33
+data("FlightResponse")
+# A
+#Create a two-way table of AltCat by Flight
+table_2way <- table(FlightResponse$AltCat, FlightResponse$Flight)
+# Calculate odds and log(odds) for each level of AltCat
+odds <- table_2way[, 2] / table_2way[, 1]
+log_odds <- log(odds)
+# Create a data frame with AltCat levels, odds, and log(odds)
+result_table <- data.frame(AltCat = levels(FlightResponse$AltCat), Odds = odds, LogOdds = log_odds)
+result_table
+
+#B
+# Fit a logistic regression model
+model <- glm(Flight ~ Altitude, data = FlightResponse, family = binomial)
+
+# Summarize the model
+summary(model)
+exp( 0.11503)
+#The Odd of flight increase by a factor or 1.12 or 12% for each additional 100m of altitude.
+```
+
